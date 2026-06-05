@@ -48,6 +48,19 @@ export function OnboardingForm() {
     setIsLoading(true);
     setError(null);
 
+    // Check if user already has a tenant
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id, tenant_id")
+      .single();
+
+    if (existingUser?.tenant_id) {
+      // User already has a tenant, redirect to dashboard
+      router.push("/");
+      router.refresh();
+      return;
+    }
+
     const { error: rpcError } = await supabase.rpc("create_tenant_with_owner", {
       tenant_name: data.tenantName,
       tenant_slug: data.tenantSlug,

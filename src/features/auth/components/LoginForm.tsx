@@ -55,7 +55,20 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/");
+    // Check if user has a tenant
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, tenant_id")
+      .single();
+
+    if (userError || !userData?.tenant_id) {
+      // User needs to complete onboarding
+      router.push("/onboarding");
+    } else {
+      // User has a tenant, go to dashboard
+      router.push("/");
+    }
+    
     router.refresh();
   };
 
