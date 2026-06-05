@@ -127,102 +127,108 @@ class SupabaseSyncService {
   // Entity sync methods
   private async syncStudent(item: PendingSync): Promise<void> {
     const { operation, data } = item;
+    const d = data as Record<string, unknown>;
     const table = this.supabase.from("students");
 
     switch (operation) {
       case "create":
-        await table.insert(data);
+        await table.insert(d);
         break;
       case "update":
-        await table.update(data).eq("id", (data as any).id);
+        await table.update(d).eq("id", d.id);
         break;
       case "delete":
-        await table.delete().eq("id", (data as any).id);
+        await table.delete().eq("id", d.id);
         break;
     }
   }
 
   private async syncTeacher(item: PendingSync): Promise<void> {
     const { operation, data } = item;
+    const d = data as Record<string, unknown>;
     const table = this.supabase.from("teachers");
 
     switch (operation) {
       case "create":
-        await table.insert(data);
+        await table.insert(d);
         break;
       case "update":
-        await table.update(data).eq("id", (data as any).id);
+        await table.update(d).eq("id", d.id);
         break;
       case "delete":
-        await table.delete().eq("id", (data as any).id);
+        await table.delete().eq("id", d.id);
         break;
     }
   }
 
   private async syncGroup(item: PendingSync): Promise<void> {
     const { operation, data } = item;
+    const d = data as Record<string, unknown>;
     const table = this.supabase.from("groups");
 
     switch (operation) {
       case "create":
-        await table.insert(data);
+        await table.insert(d);
         break;
       case "update":
-        await table.update(data).eq("id", (data as any).id);
+        await table.update(d).eq("id", d.id);
         break;
       case "delete":
-        await table.delete().eq("id", (data as any).id);
+        await table.delete().eq("id", d.id);
         break;
     }
   }
 
   private async syncAttendance(item: PendingSync): Promise<void> {
     const { operation, data } = item;
+    const d = data as Record<string, unknown>;
     const table = this.supabase.from("attendance");
 
     switch (operation) {
       case "create":
-        await table.insert(data);
+        await table.insert(d);
         break;
       case "update":
-        await table.update(data).eq("id", (data as any).id);
+        await table.update(d).eq("id", d.id);
         break;
       case "delete":
-        await table.delete().eq("id", (data as any).id);
+        await table.delete().eq("id", d.id);
         break;
     }
   }
 
   private async syncPayment(item: PendingSync): Promise<void> {
     const { operation, data } = item;
+    const d = data as Record<string, unknown>;
     const table = this.supabase.from("payments");
 
     switch (operation) {
       case "create":
-        await table.insert(data);
+        await table.insert(d);
         break;
       case "update":
-        await table.update(data).eq("id", (data as any).id);
+        await table.update(d).eq("id", d.id);
         break;
       case "delete":
-        await table.delete().eq("id", (data as any).id);
+        await table.delete().eq("id", d.id);
         break;
     }
   }
 
   private async syncExpense(item: PendingSync): Promise<void> {
     const { operation, data } = item;
+    const d = data as Record<string, unknown>;
     const table = this.supabase.from("expenses");
 
     switch (operation) {
       case "create":
-        await table.insert(data);
+        await table.insert(d);
         break;
       case "update":
-        await table.update(data).eq("id", (data as any).id);
+        await table.update(d).eq("id", d.id);
         break;
       case "delete":
-        await table.delete().eq("id", (data as any).id);
+        await table.delete().eq("id", d.id);
         break;
     }
   }
