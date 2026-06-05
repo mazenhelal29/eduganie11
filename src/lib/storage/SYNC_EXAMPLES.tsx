@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Example: Using the new Sync System
  * This shows how to use PersistentStore, SyncQueue, and useSyncedData

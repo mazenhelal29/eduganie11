@@ -17,7 +17,7 @@ type EduGenieState = {
   isLoading: boolean;
 };
 
-type NewStudent = Pick<Student, "fullName" | "phone" | "parentPhone" | "groupId" | "notes">;
+type NewStudent = Pick<Student, "fullName" | "phone" | "parentPhone" | "groupId" | "notes" | "teacherId">;
 type NewGroup = Pick<Group, "name" | "subject" | "schedule" | "capacity" | "monthlySessions" | "monthlyPrice">;
 type NewPayment = Pick<Payment, "studentId" | "amount" | "remainingBalance" | "forMonth">;
 type NewExpense = Pick<Expense, "category" | "amount" | "notes">;
