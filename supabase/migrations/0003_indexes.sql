@@ -1,0 +1,14 @@
+create index roles_tenant_id_idx on public.roles(tenant_id);
+create index users_tenant_id_idx on public.users(tenant_id);
+create index users_tenant_role_idx on public.users(tenant_id, role);
+create index students_tenant_status_idx on public.students(tenant_id, status);
+create index students_tenant_group_idx on public.students(tenant_id, group_id);
+create index groups_tenant_active_idx on public.groups(tenant_id, is_active);
+create index subscriptions_tenant_status_idx on public.subscriptions(tenant_id, status);
+create index subscriptions_tenant_ends_on_idx on public.subscriptions(tenant_id, ends_on);
+create index attendance_tenant_date_idx on public.attendance(tenant_id, attended_on);
+create index attendance_student_date_idx on public.attendance(student_id, attended_on desc);
+create index payments_tenant_paid_at_idx on public.payments(tenant_id, paid_at desc);
+create index payments_tenant_due_date_idx on public.payments(tenant_id, due_date);
+create index expenses_tenant_spent_at_idx on public.expenses(tenant_id, spent_at desc);
+create index notifications_user_read_idx on public.notifications(user_id, read_at);
