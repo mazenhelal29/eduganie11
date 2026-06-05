@@ -3,10 +3,14 @@
 import { useState, useMemo } from "react";
 import { Plus, Search, Users, Phone, BookOpen, AlertCircle } from "lucide-react";
 import { useEduGenie } from "@/providers/edugenie-store";
+import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { useTranslation } from "@/providers/i18n-provider";
 import { NewTeacherModal } from "./components/new-teacher-modal";
 
 export function TeachersPage() {
+  // Refresh data when this page is visible
+  useDataRefresh();
+  
   const { teachers } = useEduGenie();
   const { t } = useTranslation();
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);

@@ -5,9 +5,13 @@ import { Archive, Search, UserPlus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, SelectField } from "@/components/ui/field";
 import { useEduGenie } from "@/providers/edugenie-store";
+import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { useTranslation } from "@/providers/i18n-provider";
 
 export function StudentsPage() {
+  // Refresh data when this page is visible
+  useDataRefresh();
+  
   const { addStudent, archiveStudent, groups, students, teachers } = useEduGenie();
   const [query, setQuery] = useState("");
   const { t } = useTranslation();

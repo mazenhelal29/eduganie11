@@ -32,6 +32,7 @@ type EduGenieActions = {
   addPayment: (payment: NewPayment) => void;
   addExpense: (expense: NewExpense) => void;
   addTeacher: (teacher: Omit<Teacher, "id" | "tenantId" | "createdAt" | "updatedAt" | "isActive">) => Promise<void>;
+  refreshData: () => Promise<void>;
 };
 
 type EduGenieContextValue = EduGenieState &
@@ -125,46 +126,55 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     async function loadData() {
-      // 1. Try to load from local storage first for instant UI
-      const localKey = tenantId ? `${STORAGE_KEY}.${tenantId}` : `${STORAGE_KEY}.guest`;
-      const localData = window.localStorage.getItem(localKey);
-      if (localData) {
-        try {
-          const parsed = JSON.parse(localData);
-          if (isMounted) dispatch({ type: "hydrate", payload: parsed });
-        } catch (e) {
-          console.error("Failed to parse local storage data", e);
-        }
-      }
-
-      // 2. Fetch from Supabase
-      if (!tenantId) {
-        const tid = await fetchUserTenant(supabase);
-        if (tid && isMounted) {
-          setTenantId(tid);
-        } else {
-          if (isMounted) dispatch({ type: "setLoading", payload: false });
+      try {
+        // 1. Get the current user's tenant ID
+        const activeTenantId = await fetchUserTenant(supabase);
+        
+        if (!activeTenantId) {
+          if (isMounted) {
+            dispatch({ type: "setLoading", payload: false });
+          }
           return;
         }
-      }
 
-      // We have tenantId now
-      const activeTenantId = tenantId || await fetchUserTenant(supabase);
-      if (activeTenantId) {
+        // Update tenantId if it changed
+        if (isMounted && tenantId !== activeTenantId) {
+          setTenantId(activeTenantId);
+        }
+
+        // 2. Try to load from cache for instant UI (optional)
+        const cacheKey = `${STORAGE_KEY}.cache.${activeTenantId}`;
+        const cachedData = window.localStorage.getItem(cacheKey);
+        if (cachedData) {
+          try {
+            const parsed = JSON.parse(cachedData);
+            if (isMounted) dispatch({ type: "hydrate", payload: parsed });
+          } catch (e) {
+            console.error("Failed to parse cached data", e);
+          }
+        }
+
+        // 3. Always fetch fresh data from Supabase (don't rely on cache)
         const data = await fetchTenantData(supabase, activeTenantId);
         if (isMounted) {
           dispatch({ type: "hydrate", payload: data });
-          // Save the fresh DB data to local storage
-          window.localStorage.setItem(`${STORAGE_KEY}.${activeTenantId}`, JSON.stringify(data));
+          // Update cache with fresh data
+          const cacheKey = `${STORAGE_KEY}.cache.${activeTenantId}`;
+          window.localStorage.setItem(cacheKey, JSON.stringify(data));
         }
-      } else if (isMounted) {
-        dispatch({ type: "setLoading", payload: false });
+      } catch (error) {
+        console.error("Error loading data:", error);
+        if (isMounted) {
+          dispatch({ type: "setLoading", payload: false });
+        }
       }
     }
 
     loadData();
 
+    // Re-fetch data when auth state changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      setTenantId(null); // Reset tenant ID to force re-fetch
       loadData();
     });
 
@@ -172,14 +182,14 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, tenantId]);
+  }, [supabase]);
 
-  // Sync to local storage on every state change
+  // Sync to local storage on state changes (cache only, not source of truth)
   useEffect(() => {
-    if (!state.isLoading) {
-      const localKey = tenantId ? `${STORAGE_KEY}.${tenantId}` : `${STORAGE_KEY}.guest`;
-      // Don't save if state is empty and we just loaded, but we trust the reducer
-      window.localStorage.setItem(localKey, JSON.stringify(state));
+    if (!state.isLoading && tenantId) {
+      // Store as cache for UI performance, but Supabase is source of truth
+      const cacheKey = `${STORAGE_KEY}.cache.${tenantId}`;
+      window.localStorage.setItem(cacheKey, JSON.stringify(state));
     }
   }, [state, tenantId]);
 
@@ -226,19 +236,22 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
 
   const addTeacher = useCallback(
     async (teacher: Omit<Teacher, "id" | "tenantId" | "createdAt" | "updatedAt" | "isActive">) => {
+      if (!tenantId) {
+        throw new Error("No tenant ID found");
+      }
+
       const newTeacher: Teacher = {
         ...teacher,
         id: crypto.randomUUID(),
-        tenantId: tenantId || "guest",
+        tenantId: tenantId,
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      dispatch({ type: "addTeacher", payload: newTeacher });
-
-      if (tenantId) {
-        await supabase.from("teachers").insert({
+      try {
+        // Save to Supabase first
+        const { error } = await supabase.from("teachers").insert({
           id: newTeacher.id,
           tenant_id: tenantId,
           full_name: teacher.fullName,
@@ -248,6 +261,14 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           created_at: newTeacher.createdAt,
           updated_at: newTeacher.updatedAt,
         });
+
+        if (error) throw error;
+
+        // Only update state after successful save
+        dispatch({ type: "addTeacher", payload: newTeacher });
+      } catch (error) {
+        console.error("Error adding teacher:", error);
+        throw error;
       }
     },
     [tenantId, supabase]
@@ -266,23 +287,40 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
       ...state,
       metrics,
       updateSettings: async (payload) => {
-        dispatch({ type: "updateSettings", payload });
-        if (tenantId && payload.billingModel) {
-          await supabase.from("tenant_settings").upsert({
+        if (!tenantId || !payload.billingModel) {
+          return; // No-op if no tenant or payload
+        }
+
+        try {
+          // Save to Supabase first
+          const { error } = await supabase.from("tenant_settings").upsert({
             tenant_id: tenantId,
             billing_model: payload.billingModel,
           });
+
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "updateSettings", payload });
+        } catch (error) {
+          console.error("Error updating settings:", error);
+          throw error;
         }
       },
       addStudent: async (payload) => {
+        if (!tenantId) {
+          throw new Error("No tenant ID found");
+        }
+
         const student: Student = makeEntity({
           ...payload,
           status: "active",
           joinDate: new Date().toISOString().slice(0, 10),
         });
-        dispatch({ type: "addStudent", payload: student });
-        if (tenantId) {
-          await supabase.from("students").insert({
+
+        try {
+          // Save to Supabase first
+          const { error } = await supabase.from("students").insert({
             id: student.id,
             tenant_id: tenantId,
             full_name: student.fullName,
@@ -293,23 +331,47 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             teacher_id: student.teacherId,
             status: student.status,
           });
+
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "addStudent", payload: student });
+        } catch (error) {
+          console.error("Error adding student:", error);
+          throw error;
         }
       },
       archiveStudent: async (studentId) => {
-        dispatch({ type: "updateStudentStatus", payload: { id: studentId, status: "archived" } });
-        if (tenantId) {
-          await supabase.from("students").update({ status: "archived" }).eq("id", studentId);
+        if (!tenantId) {
+          throw new Error("No tenant ID found");
+        }
+
+        try {
+          // Update in Supabase first
+          const { error } = await supabase.from("students").update({ status: "archived" }).eq("id", studentId);
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "updateStudentStatus", payload: { id: studentId, status: "archived" } });
+        } catch (error) {
+          console.error("Error archiving student:", error);
+          throw error;
         }
       },
       addGroup: async (payload) => {
+        if (!tenantId) {
+          throw new Error("No tenant ID found");
+        }
+
         const group: Group = makeEntity({
           ...payload,
           enrolled: 0,
           isActive: true,
         });
-        dispatch({ type: "addGroup", payload: group });
-        if (tenantId) {
-          await supabase.from("groups").insert({
+
+        try {
+          // Save to Supabase first
+          const { error } = await supabase.from("groups").insert({
             id: group.id,
             tenant_id: tenantId,
             name: group.name,
@@ -319,9 +381,21 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             monthly_sessions: group.monthlySessions,
             monthly_price: group.monthlyPrice,
           });
+
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "addGroup", payload: group });
+        } catch (error) {
+          console.error("Error adding group:", error);
+          throw error;
         }
       },
       markAttendance: async (studentId, status) => {
+        if (!tenantId) {
+          throw new Error("No tenant ID found");
+        }
+
         const student = state.students.find((s) => s.id === studentId);
         const record: AttendanceRecord = makeEntity({
           studentId,
@@ -329,9 +403,10 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           status,
           attendedOn: new Date().toISOString().slice(0, 10),
         });
-        dispatch({ type: "addAttendanceRecords", payload: [record] });
-        if (tenantId) {
-          await supabase.from("attendance").insert({
+
+        try {
+          // Save to Supabase first
+          const { error } = await supabase.from("attendance").insert({
             id: record.id,
             tenant_id: tenantId,
             student_id: record.studentId,
@@ -339,9 +414,21 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             status: record.status,
             attended_on: record.attendedOn,
           });
+
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "addAttendanceRecords", payload: [record] });
+        } catch (error) {
+          console.error("Error marking attendance:", error);
+          throw error;
         }
       },
       markGroupAttendance: async (records) => {
+        if (!tenantId) {
+          throw new Error("No tenant ID found");
+        }
+
         const attendedOn = new Date().toISOString().slice(0, 10);
         const newRecords = records.map((r) => {
           const student = state.students.find((s) => s.id === r.studentId);
@@ -352,8 +439,9 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             attendedOn,
           }) as AttendanceRecord;
         });
-        dispatch({ type: "addAttendanceRecords", payload: newRecords });
-        if (tenantId) {
+
+        try {
+          // Save to Supabase first
           const dbRecords = newRecords.map(r => ({
             id: r.id,
             tenant_id: tenantId,
@@ -362,17 +450,30 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             status: r.status,
             attended_on: r.attendedOn,
           }));
-          await supabase.from("attendance").insert(dbRecords);
+
+          const { error } = await supabase.from("attendance").insert(dbRecords);
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "addAttendanceRecords", payload: newRecords });
+        } catch (error) {
+          console.error("Error marking group attendance:", error);
+          throw error;
         }
       },
       addPayment: async (payload) => {
+        if (!tenantId) {
+          throw new Error("No tenant ID found");
+        }
+
         const payment: Payment = makeEntity({
           ...payload,
           paidAt: new Date().toISOString().slice(0, 10),
         });
-        dispatch({ type: "addPayment", payload: payment });
-        if (tenantId) {
-          await supabase.from("payments").insert({
+
+        try {
+          // Save to Supabase first
+          const { error } = await supabase.from("payments").insert({
             id: payment.id,
             tenant_id: tenantId,
             student_id: payment.studentId,
@@ -381,16 +482,29 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             paid_at: payment.paidAt,
             for_month: payment.forMonth,
           });
+
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "addPayment", payload: payment });
+        } catch (error) {
+          console.error("Error adding payment:", error);
+          throw error;
         }
       },
       addExpense: async (payload) => {
+        if (!tenantId) {
+          throw new Error("No tenant ID found");
+        }
+
         const expense: Expense = makeEntity({
           ...payload,
           spentAt: new Date().toISOString().slice(0, 10),
         });
-        dispatch({ type: "addExpense", payload: expense });
-        if (tenantId) {
-          await supabase.from("expenses").insert({
+
+        try {
+          // Save to Supabase first
+          const { error } = await supabase.from("expenses").insert({
             id: expense.id,
             tenant_id: tenantId,
             category: expense.category,
@@ -398,9 +512,34 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             spent_at: expense.spentAt,
             notes: expense.notes,
           });
+
+          if (error) throw error;
+
+          // Only update state after successful save
+          dispatch({ type: "addExpense", payload: expense });
+        } catch (error) {
+          console.error("Error adding expense:", error);
+          throw error;
         }
       },
       addTeacher,
+      refreshData: async () => {
+        const activeTenantId = await fetchUserTenant(supabase);
+        if (activeTenantId) {
+          dispatch({ type: "setLoading", payload: true });
+          try {
+            const data = await fetchTenantData(supabase, activeTenantId);
+            dispatch({ type: "hydrate", payload: data });
+            // Update cache with fresh data
+            const cacheKey = `${STORAGE_KEY}.cache.${activeTenantId}`;
+            window.localStorage.setItem(cacheKey, JSON.stringify(data));
+          } catch (error) {
+            console.error("Error refreshing data:", error);
+          } finally {
+            dispatch({ type: "setLoading", payload: false });
+          }
+        }
+      },
     };
   }, [state, metrics, tenantId, supabase, addTeacher]);
 

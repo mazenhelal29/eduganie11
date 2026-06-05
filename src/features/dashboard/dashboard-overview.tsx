@@ -12,9 +12,13 @@ import {
 import { StatCard } from "@/components/ui/stat-card";
 import { formatCurrency } from "@/lib/utils";
 import { useEduGenie } from "@/providers/edugenie-store";
+import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { useTranslation } from "@/providers/i18n-provider";
 
 export function DashboardOverview() {
+  // Refresh data when dashboard is visible
+  useDataRefresh();
+  
   const { groups, metrics, students } = useEduGenie();
   const { t } = useTranslation();
 

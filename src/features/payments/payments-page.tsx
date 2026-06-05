@@ -5,9 +5,13 @@ import { CreditCard, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Field, SelectField } from "@/components/ui/field";
 import { formatCurrency } from "@/lib/utils";
 import { useEduGenie } from "@/providers/edugenie-store";
+import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { useTranslation } from "@/providers/i18n-provider";
 
 export function PaymentsPage() {
+  // Refresh data when this page is visible
+  useDataRefresh();
+  
   const { addPayment, payments, students, groups, settings } = useEduGenie();
   const { t } = useTranslation();
 
