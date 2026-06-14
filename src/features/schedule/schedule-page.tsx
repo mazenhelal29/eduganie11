@@ -72,7 +72,7 @@ export function SchedulePage() {
   const daysLabels = t.common.days as Record<string, string>;
 
   // Filter out days with no classes to make the UI cleaner
-  const activeDays = Array.from({ length: 7 }).filter(i => (scheduleByDay.get(i)?.length || 0) > 0);
+  const activeDays = Array.from({ length: 7 }, (_, i) => i).filter(i => (scheduleByDay.get(i)?.length || 0) > 0);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integration Guide: How to Use the New Sync System
  * Add this to your edugenie-store.tsx to prevent data loss
