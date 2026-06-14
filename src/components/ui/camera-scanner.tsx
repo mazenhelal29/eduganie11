@@ -36,6 +36,7 @@ export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
           if (!scannerRef.current) {
             scannerRef.current = new Html5Qrcode("qr-reader", {
               formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+              verbose: false,
             });
           }
 
