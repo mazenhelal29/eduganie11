@@ -16,7 +16,7 @@ export function StudentsPage() {
   // Refresh data when this page is visible
   useDataRefresh();
   
-  const { addStudent, archiveStudent, groups, students, teachers, attendance, assignCard, cards } = useEduGenie();
+  const { addStudent, editStudent, archiveStudent, groups, students, teachers, attendance, assignCard, cards } = useEduGenie();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
   const [currentPage, setCurrentPage] = useState(1);
@@ -166,7 +166,7 @@ export function StudentsPage() {
                                   e.preventDefault();
                                   const formData = new FormData(e.currentTarget);
                                   try {
-                                    await useEduGenie().editStudent(student.id, {
+                                    await editStudent(student.id, {
                                       fullName: String(formData.get("fullName") || ""),
                                       phone: String(formData.get("phone") || ""),
                                       parentPhone: String(formData.get("parentPhone") || ""),
