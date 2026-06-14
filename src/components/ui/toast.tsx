@@ -57,7 +57,7 @@ const STYLES: Record<ToastType, { bg: string; border: string; icon: string; text
 
 function ToastCard({ item, onRemove }: { item: ToastItem; onRemove: (id: string) => void }) {
   const [exiting, setExiting] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const remove = useCallback(() => {
     setExiting(true);
@@ -66,7 +66,9 @@ function ToastCard({ item, onRemove }: { item: ToastItem; onRemove: (id: string)
 
   useEffect(() => {
     timerRef.current = setTimeout(remove, item.duration ?? 4000);
-    return () => clearTimeout(timerRef.current);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [item.duration, remove]);
 
   const Icon = ICONS[item.type];
