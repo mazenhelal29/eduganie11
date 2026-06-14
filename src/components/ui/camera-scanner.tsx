@@ -34,7 +34,9 @@ export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
           if (!mounted) return;
           
           if (!scannerRef.current) {
-            scannerRef.current = new Html5Qrcode("qr-reader");
+            scannerRef.current = new Html5Qrcode("qr-reader", {
+              formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+            });
           }
 
           const html5QrCode = scannerRef.current;
@@ -48,7 +50,6 @@ export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
             {
               fps: 10,
               qrbox: { width: 250, height: 250 },
-              formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
             },
             (decodedText) => {
               // Ignore scans if paused
