@@ -11,11 +11,18 @@ interface CameraScannerProps {
 
 export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
   const [hasError, setHasError] = useState<string | null>(null);
-  const [hasCameras, setHasCameras] = useState(true);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const regionRef = useRef<HTMLDivElement>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+
+  const onScanRef = useRef(onScan);
+  const pausedRef = useRef(paused);
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+    pausedRef.current = paused;
+  }, [onScan, paused]);
 
   useEffect(() => {
     let mounted = true;
@@ -25,7 +32,6 @@ export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length > 0) {
           if (!mounted) return;
-          setHasCameras(true);
           
           if (!scannerRef.current) {
             scannerRef.current = new Html5Qrcode("qr-reader");
@@ -46,8 +52,8 @@ export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
             },
             (decodedText) => {
               // Ignore scans if paused
-              if (!paused) {
-                onScan(decodedText);
+              if (!pausedRef.current) {
+                onScanRef.current(decodedText);
               }
             },
             () => {
@@ -62,13 +68,13 @@ export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
           });
         } else {
           if (mounted) {
-            setHasCameras(false);
             setHasError("لم يتم العثور على كاميرا في جهازك.");
             setIsInitializing(false);
           }
         }
-      } catch (err) {
-        console.error("Camera permissions error:", err);
+        }
+      } catch {
+        console.error("Camera permissions error");
         if (mounted) {
           setHasError("الرجاء السماح للمتصفح باستخدام الكاميرا.");
           setIsInitializing(false);

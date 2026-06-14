@@ -176,7 +176,7 @@ export function StudentsPage() {
                                     });
                                     setEditingStudentId(null);
                                     toast.success("تم تعديل الطالب بنجاح");
-                                  } catch (err) {
+                                  } catch {
                                     toast.error("حدث خطأ أثناء التعديل");
                                   }
                                 }}
@@ -295,7 +295,7 @@ export function StudentsPage() {
                                       try {
                                         await archiveStudent(student.id);
                                         toast.success("تم أرشفة الطالب");
-                                      } catch (err) {
+                                      } catch {
                                         toast.error("حدث خطأ أثناء الأرشفة");
                                       }
                                     }
@@ -373,7 +373,7 @@ export function StudentsPage() {
                   await assignCard(cardId, assigningCardTo.id);
                   toast.success("تم ربط البطاقة بنجاح!");
                   setAssigningCardTo(null);
-                } catch(err) {
+                } catch {
                   toast.error("حدث خطأ أثناء الربط. حاول مرة أخرى.");
                   form.reset();
                 }

@@ -10,7 +10,6 @@ import {
   TrendingUp,
   Clock,
   CreditCard,
-  MessageCircle,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -213,7 +212,7 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
                       await archiveGroup(groupId);
                       toast.success("تم أرشفة المجموعة");
                       window.history.back();
-                    } catch (err) {
+                    } catch {
                       toast.error("حدث خطأ أثناء الأرشفة");
                     }
                   }
@@ -254,7 +253,7 @@ export function GroupDetailsPage({ groupId }: { groupId: string }) {
               });
               setIsEditing(false);
               toast.success("تم تعديل المجموعة بنجاح");
-            } catch (error) {
+            } catch {
               toast.error("حدث خطأ أثناء التعديل");
             }
           }}

@@ -20,8 +20,7 @@ export function BottomNavigation() {
       <div className="flex gap-0.5 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {navigationItems.map((item) => {
           const keys = item.labelKey.split(".");
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const label = keys.reduce((obj: any, key) => obj?.[key], t) || item.labelKey;
+          const label = keys.reduce((obj: unknown, key) => (obj as Record<string, unknown>)?.[key], t) as string || item.labelKey;
           const active = isActive(item.href);
 
           return (

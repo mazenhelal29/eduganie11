@@ -35,12 +35,13 @@ export default function ScannerPage() {
     focusInput();
     window.addEventListener("click", focusInput);
     return () => window.removeEventListener("click", focusInput);
-  }, []);
+  }, [scanState, useCamera]);
 
   const playSound = (type: "success" | "error" | "warning") => {
     // Basic beep implementation using Web Audio API
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AudioContextClass();
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
       
@@ -72,7 +73,7 @@ export default function ScannerPage() {
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.2);
       }
-    } catch (e) {
+    } catch {
       console.log("Audio not supported or blocked");
     }
   };
@@ -179,7 +180,7 @@ export default function ScannerPage() {
         playSound("warning");
       });
       
-    } catch (error) {
+    } catch {
       setScanState("error");
       setMessage("حدث خطأ في النظام");
       playSound("error");
@@ -323,7 +324,7 @@ export default function ScannerPage() {
                           setFinancialAlert(null);
                           playSound("success");
                           resetStateAfterDelay();
-                        } catch(err) {
+                        } catch {
                           setScanState("error");
                           setMessage("حدث خطأ أثناء الربط");
                           playSound("error");

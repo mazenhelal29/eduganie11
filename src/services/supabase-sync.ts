@@ -37,7 +37,7 @@ export async function fetchUserTenant(supabase: ReturnType<typeof createSupabase
       .select("is_superadmin")
       .eq("id", user.id)
       .maybeSingle();
-    isSuperAdminFromDb = (saData as any)?.is_superadmin === true;
+    isSuperAdminFromDb = (saData as { is_superadmin?: boolean } | null)?.is_superadmin === true;
   } catch {
     // is_superadmin column may not exist yet
   }
@@ -114,7 +114,7 @@ export async function fetchTenantData(supabase: ReturnType<typeof createSupabase
       .select("id,subscription_end_date")
       .eq("id", tenantId)
       .maybeSingle();
-    subscriptionEndDate = (tenantData as any)?.subscription_end_date || null;
+    subscriptionEndDate = (tenantData as { subscription_end_date?: string } | null)?.subscription_end_date || null;
   } catch {
     // subscription_end_date column may not exist yet
   }

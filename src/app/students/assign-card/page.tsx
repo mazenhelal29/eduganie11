@@ -2,13 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useEduGenie } from "@/providers/edugenie-store";
-import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/toast";
 import { CreditCard, ScanLine, Search, User, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function AssignCardPage() {
   const { students, cards, assignCard } = useEduGenie();
-  const router = useRouter();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -63,7 +61,7 @@ export default function AssignCardPage() {
       setCardInput("");
       setSelectedStudentId(null);
       setSearchTerm("");
-    } catch (error) {
+    } catch {
       toast.error("حدث خطأ أثناء تعيين البطاقة");
     } finally {
       setIsAssigning(false);

@@ -237,10 +237,13 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // If switching accounts, clear previous data immediately
-        if (tenantId && activeTenantId.tenantId !== tenantId) {
-          dispatch({ type: "reset" });
-        }
+        // Update tenantId if it changed and clear previous data if switching accounts
+        setTenantId((prev) => {
+          if (prev && activeTenantId.tenantId !== prev) {
+            dispatch({ type: "reset" });
+          }
+          return activeTenantId.tenantId;
+        });
 
         // Super admin without a tenant - just mark as loaded with isSuperAdmin flag
         if (activeTenantId.isSuperAdmin && !activeTenantId.tenantId) {
@@ -255,8 +258,6 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Update tenantId if it changed
-        setTenantId(activeTenantId.tenantId);
 
         // 2. Try to load from cache for instant UI (optional)
         const cached = readTenantCache(activeTenantId.tenantId);
@@ -279,7 +280,8 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           return acc;
         }, {} as Record<string, StudentCard>);
 
-        const { cards: rawCards, ...restData } = data;
+        const { cards, ...restData } = data;
+        void cards;
         const finalData = {
           ...restData,
           cards: cardsRecord,
@@ -415,7 +417,8 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
         return acc;
       }, {} as Record<string, StudentCard>);
 
-      const { cards: rawCards, ...restData } = data;
+      const { cards, ...restData } = data;
+      void cards;
       const finalData = {
         ...restData,
         cards: cardsRecord,

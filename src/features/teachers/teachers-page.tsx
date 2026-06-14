@@ -100,8 +100,8 @@ export function TeachersPage() {
                         });
                         setEditingTeacherId(null);
                         toast.success("تم التعديل بنجاح");
-                      } catch (err) {
-                        toast.error("حدث خطأ أثناء التعديل");
+                      } catch {
+                        toast.error("حدث خطأ أثناء حفظ المعلم");
                       }
                     }}
                   >
@@ -167,7 +167,7 @@ export function TeachersPage() {
                           try {
                             await archiveTeacher(teacher.id);
                             toast.success("تم الأرشفة بنجاح");
-                          } catch (err) {
+                          } catch {
                             toast.error("حدث خطأ أثناء الأرشفة");
                           }
                         }

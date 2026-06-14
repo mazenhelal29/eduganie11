@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 
 import { Lock, Unlock, Play, Pause, Search } from "lucide-react";
 import { createSupabaseClient } from "@/services/supabase-sync";
@@ -19,9 +19,9 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<TenantWithStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const supabase = createSupabaseClient();
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
-  const loadTenants = async () => {
+  const loadTenants = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("tenants")
@@ -30,16 +30,15 @@ export default function TenantsPage() {
 
       if (error) throw error;
       setTenants(data || []);
-    } catch (error) {
+    } catch {
       toast.error("حدث خطأ أثناء تحميل المراكز");
     } finally {
       setIsLoading(false);
     }
-  };
-
+  }, [supabase]);
   useEffect(() => {
     loadTenants();
-  }, [supabase]);
+  }, [loadTenants]);
 
   const updateSubscription = async (id: string, daysToAdd: number) => {
     try {
@@ -55,7 +54,7 @@ export default function TenantsPage() {
       
       toast.success("تم تحديث اشتراك المركز بنجاح");
       loadTenants();
-    } catch (error) {
+    } catch {
       toast.error("حدث خطأ أثناء تحديث الاشتراك");
     }
   };
@@ -75,7 +74,7 @@ export default function TenantsPage() {
       
       toast.success("تم إيقاف المركز بنجاح");
       loadTenants();
-    } catch (error) {
+    } catch {
       toast.error("حدث خطأ أثناء إيقاف المركز");
     }
   };

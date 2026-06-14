@@ -70,8 +70,8 @@ export function LoginForm() {
         .select("tenant_id")
         .maybeSingle();
       userData = res.data;
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setError("حدث خطأ في النظام");
     }
 
     if (!userData?.tenant_id) {
