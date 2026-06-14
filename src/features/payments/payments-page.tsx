@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CreditCard, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Field, SelectField } from "@/components/ui/field";
 import { formatCurrency } from "@/lib/utils";
@@ -14,6 +14,8 @@ export function PaymentsPage() {
   
   const { addPayment, payments, students, groups, settings } = useEduGenie();
   const { t } = useTranslation();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const now = new Date();
   const billingModel = settings?.billingModel ?? "prepaid";
@@ -28,22 +30,27 @@ export function PaymentsPage() {
 
   // Current month as default for the form
   const currentMonthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const groupById = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
+  const studentById = useMemo(() => new Map(students.map((student) => [student.id, student])), [students]);
+  const paidByStudentMonth = useMemo(() => {
+    const paid = new Set<string>();
+
+    payments.forEach((payment) => {
+      paid.add(`${payment.studentId}:${payment.forMonth}`);
+    });
+
+    return paid;
+  }, [payments]);
 
   // Compute unpaid students
   const unpaidStudents = useMemo(() => {
     const activeStudents = students.filter((s) => s.status === "active");
     return activeStudents.filter((student) => {
-      const group = groups.find((g) => g.id === student.groupId);
+      const group = student.groupId ? groupById.get(student.groupId) : null;
       if (!group) return false;
-      const paid = payments.some(
-        (p) =>
-          p.studentId === student.id &&
-          p.forMonth === targetMonth &&
-          p.amount >= (group.monthlyPrice || 1)
-      );
-      return !paid;
+      return !paidByStudentMonth.has(`${student.id}:${targetMonth}`);
     });
-  }, [students, groups, payments, targetMonth]);
+  }, [students, groupById, paidByStudentMonth, targetMonth]);
 
   const activeStudents = students.filter((s) => s.status === "active");
 
@@ -71,7 +78,7 @@ export function PaymentsPage() {
         {unpaidStudents.length > 0 && (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {unpaidStudents.map((student) => {
-              const group = groups.find((g) => g.id === student.groupId);
+              const group = student.groupId ? groupById.get(student.groupId) : null;
               return (
                 <article
                   key={student.id}
@@ -101,16 +108,26 @@ export function PaymentsPage() {
           </div>
           <form
             className="grid gap-3"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              addPayment({
-                studentId: String(form.get("studentId") || ""),
-                amount: Number(form.get("amount") || 0),
-                remainingBalance: Number(form.get("remainingBalance") || 0),
-                forMonth: String(form.get("forMonth") || currentMonthValue),
-              });
-              event.currentTarget.reset();
+              const target = event.currentTarget;
+              const form = new FormData(target);
+              setFormError(null);
+              setIsSubmitting(true);
+
+              try {
+                await addPayment({
+                  studentId: String(form.get("studentId") || ""),
+                  amount: Number(form.get("amount") || 0),
+                  remainingBalance: Number(form.get("remainingBalance") || 0),
+                  forMonth: String(form.get("forMonth") || currentMonthValue),
+                });
+                target.reset();
+              } catch (error) {
+                setFormError(error instanceof Error ? error.message : "Failed to save payment.");
+              } finally {
+                setIsSubmitting(false);
+              }
             }}
           >
             <SelectField name="studentId" label={t.payments.student} required>
@@ -133,7 +150,11 @@ export function PaymentsPage() {
                 required
               />
             </div>
-            <button className="focus-ring h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
+            {formError ? <p className="text-sm text-red-500">{formError}</p> : null}
+            <button
+              className="focus-ring h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
+              disabled={isSubmitting}
+            >
               {t.payments.saveBtn}
             </button>
           </form>
@@ -150,7 +171,7 @@ export function PaymentsPage() {
               </div>
             ) : (
               payments.map((payment) => {
-                const student = students.find((s) => s.id === payment.studentId);
+                const student = studentById.get(payment.studentId);
                 return (
                   <article key={payment.id} className="rounded-lg border p-3 hover:bg-muted/30 transition-colors">
                     <div className="flex items-start justify-between gap-3">

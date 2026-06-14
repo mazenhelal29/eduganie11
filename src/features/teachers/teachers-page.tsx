@@ -1,20 +1,22 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Search, Users, Phone, BookOpen, AlertCircle } from "lucide-react";
+import { Plus, Search, Users, Phone, BookOpen, Pencil, Archive, X, Check } from "lucide-react";
 import { useEduGenie } from "@/providers/edugenie-store";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { useTranslation } from "@/providers/i18n-provider";
 import { NewTeacherModal } from "./components/new-teacher-modal";
+import { toast } from "@/components/ui/toast";
 
 export function TeachersPage() {
   // Refresh data when this page is visible
   useDataRefresh();
   
-  const { teachers } = useEduGenie();
+  const { teachers, editTeacher, archiveTeacher } = useEduGenie();
   const { t } = useTranslation();
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
 
   const filteredTeachers = useMemo(() => {
     return teachers
@@ -79,36 +81,120 @@ export function TeachersPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredTeachers.map((teacher) => (
-            <div
-              key={teacher.id}
-              className="group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
-                    <span className="text-lg font-bold">{teacher.fullName.charAt(0)}</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">{teacher.fullName}</h3>
-                  </div>
-                </div>
-              </div>
+          {filteredTeachers.map((teacher) => {
+            const isEditing = editingTeacherId === teacher.id;
 
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <BookOpen className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{teacher.subject}</span>
+            if (isEditing) {
+              return (
+                <div key={teacher.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20 p-5 shadow-sm">
+                  <form
+                    className="grid gap-3"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      try {
+                        await editTeacher(teacher.id, {
+                          fullName: String(formData.get("fullName") || ""),
+                          phone: String(formData.get("phone") || ""),
+                          subject: String(formData.get("subject") || ""),
+                        });
+                        setEditingTeacherId(null);
+                        toast.success("تم التعديل بنجاح");
+                      } catch (err) {
+                        toast.error("حدث خطأ أثناء التعديل");
+                      }
+                    }}
+                  >
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t.teachers.fullName || "الاسم"}</label>
+                        <input name="fullName" defaultValue={teacher.fullName} required className="focus-ring h-9 w-full rounded-md border bg-background px-3 text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t.teachers.subject || "المادة"}</label>
+                        <input name="subject" defaultValue={teacher.subject} required className="focus-ring h-9 w-full rounded-md border bg-background px-3 text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t.teachers.phone || "رقم الهاتف"}</label>
+                        <input name="phone" defaultValue={teacher.phone} className="focus-ring h-9 w-full rounded-md border bg-background px-3 text-sm" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTeacherId(null)}
+                        className="flex h-9 items-center justify-center gap-1 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted"
+                      >
+                        <X className="h-4 w-4" /> إلغاء
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex h-9 items-center justify-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                      >
+                        <Check className="h-4 w-4" /> حفظ
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                {teacher.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4 shrink-0" />
-                    <span>{teacher.phone}</span>
+              );
+            }
+
+            return (
+              <div
+                key={teacher.id}
+                className="group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-sm transition-all hover:shadow-md"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+                      <span className="text-lg font-bold">{teacher.fullName.charAt(0)}</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">{teacher.fullName}</h3>
+                    </div>
                   </div>
-                )}
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => setEditingTeacherId(teacher.id)}
+                      className="focus-ring flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                      title="تعديل"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if(confirm("هل أنت متأكد من أرشفة هذا المعلم؟")) {
+                          try {
+                            await archiveTeacher(teacher.id);
+                            toast.success("تم الأرشفة بنجاح");
+                          } catch (err) {
+                            toast.error("حدث خطأ أثناء الأرشفة");
+                          }
+                        }
+                      }}
+                      className="focus-ring flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      title="أرشفة"
+                    >
+                      <Archive className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <BookOpen className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{teacher.subject}</span>
+                  </div>
+                  {teacher.phone && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="h-4 w-4 shrink-0" />
+                      <span>{teacher.phone}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -2,23 +2,43 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "EduGenie",
+    name: "EduGenie - إدارة المراكز التعليمية",
     short_name: "EduGenie",
-    description: "Mobile-first SaaS operations platform for education centers.",
+    description: "نظام إدارة المراكز التعليمية - حضور، مدفوعات، ومتابعة الطلاب بسهولة",
     start_url: "/",
+    scope: "/",
     display: "standalone",
-    background_color: "#f8fafc",
+    orientation: "portrait",
+    background_color: "#172554",
     theme_color: "#172554",
+    lang: "ar",
+    dir: "rtl",
+    categories: ["education", "productivity"],
+    screenshots: [
+      {
+        src: "/logo.jpg",
+        sizes: "1024x1024",
+        type: "image/jpeg",
+      },
+    ],
     icons: [
       {
-        src: "/icons/icon-192.svg",
+        src: "/logo.jpg",
         sizes: "192x192",
-        type: "image/svg+xml",
+        type: "image/jpeg",
+        purpose: "any",
       },
       {
-        src: "/icons/icon-512.svg",
+        src: "/logo.jpg",
         sizes: "512x512",
-        type: "image/svg+xml",
+        type: "image/jpeg",
+        purpose: "any",
+      },
+      {
+        src: "/logo.jpg",
+        sizes: "512x512",
+        type: "image/jpeg",
+        purpose: "maskable",
       },
     ],
   };

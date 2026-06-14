@@ -8,12 +8,25 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { useTranslation } from "@/providers/i18n-provider";
 import { useEduGenie } from "@/providers/edugenie-store";
 
+function formatDaysRemaining(endDateStr: string): string {
+  const end = new Date(endDateStr);
+  const now = new Date();
+  const diffTime = end.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays <= 0) return "الاشتراك منتهي";
+  if (diffDays === 1) return "متبقي يوم واحد";
+  if (diffDays === 2) return "متبقي يومين";
+  if (diffDays <= 10) return `متبقي ${diffDays} أيام`;
+  return `متبقي ${diffDays} يوماً`;
+}
+
 export function SettingsPage() {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const { t } = useTranslation();
-  const { settings, updateSettings } = useEduGenie();
+  const { settings, updateSettings, subscription } = useEduGenie();
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,6 +56,31 @@ export function SettingsPage() {
             <p className="font-medium">{t.settings.rolesTitle}</p>
             <p className="text-muted-foreground">{t.settings.rolesDesc}</p>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-4 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-accent" />
+          <h2 className="text-lg font-semibold">حالة الاشتراك</h2>
+        </div>
+        <div className="space-y-3 text-sm">
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div>
+              <p className="font-medium">فترة الاشتراك</p>
+              <p className="text-muted-foreground">
+                {subscription.isActive 
+                  ? formatDaysRemaining(subscription.endDate)
+                  : "الاشتراك منتهي"}
+              </p>
+            </div>
+            <div className={`rounded-full px-3 py-1 text-xs font-bold ${subscription.isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+              {subscription.isActive ? "نشط" : "منتهي"}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            تاريخ الانتهاء: {new Date(subscription.endDate).toLocaleDateString('ar-EG')}
+          </p>
         </div>
       </section>
 

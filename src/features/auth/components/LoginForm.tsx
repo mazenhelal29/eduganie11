@@ -55,20 +55,31 @@ export function LoginForm() {
       return;
     }
 
-    // Check if user has a tenant
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("id, tenant_id")
-      .single();
+    // Super admin check by email - always redirect to super admin dashboard
+    if (data.email.toLowerCase() === "mazenhelal29@gmail.com") {
+      router.push("/super-admin");
+      router.refresh();
+      return;
+    }
 
-    if (userError || !userData?.tenant_id) {
-      // User needs to complete onboarding
+    // Check if regular user has a tenant
+    let userData = null;
+    try {
+      const res = await supabase
+        .from("users")
+        .select("tenant_id")
+        .maybeSingle();
+      userData = res.data;
+    } catch (err) {
+      console.error(err);
+    }
+
+    if (!userData?.tenant_id) {
       router.push("/onboarding");
     } else {
-      // User has a tenant, go to dashboard
       router.push("/");
     }
-    
+
     router.refresh();
   };
 

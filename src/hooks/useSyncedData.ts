@@ -53,7 +53,8 @@ export function useSyncedData<T>(
   // Persist data whenever it changes
   const updateData = useCallback((newData: T | ((prev: T) => T)) => {
     setData((prevData) => {
-      const updated = typeof newData === "function" ? (newData as any)(prevData) : newData;
+      const updated =
+        typeof newData === "function" ? (newData as (prev: T) => T)(prevData) : newData;
       // Persist to storage immediately
       PersistentStore.save(persistKey, updated);
       return updated;

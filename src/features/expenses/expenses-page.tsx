@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { WalletCards } from "lucide-react";
 import { Field, SelectField } from "@/components/ui/field";
 import { formatCurrency } from "@/lib/utils";
@@ -13,6 +14,8 @@ export function ExpensesPage() {
   
   const { addExpense, expenses } = useEduGenie();
   const { t } = useTranslation();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
@@ -23,15 +26,25 @@ export function ExpensesPage() {
         </div>
         <form
           className="grid gap-3"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            addExpense({
-              category: form.get("category") as "rent" | "salaries" | "utilities" | "miscellaneous",
-              amount: Number(form.get("amount") || 0),
-              notes: String(form.get("notes") || ""),
-            });
-            event.currentTarget.reset();
+            const target = event.currentTarget;
+            const form = new FormData(target);
+            setFormError(null);
+            setIsSubmitting(true);
+
+            try {
+              await addExpense({
+                category: form.get("category") as "rent" | "salaries" | "utilities" | "miscellaneous",
+                amount: Number(form.get("amount") || 0),
+                notes: String(form.get("notes") || ""),
+              });
+              target.reset();
+            } catch (error) {
+              setFormError(error instanceof Error ? error.message : "Failed to save expense.");
+            } finally {
+              setIsSubmitting(false);
+            }
           }}
         >
           <SelectField name="category" label={t.expenses.category} required>
@@ -42,7 +55,11 @@ export function ExpensesPage() {
           </SelectField>
           <Field name="amount" label={t.expenses.amount} type="number" min={0} required placeholder="2500" />
           <Field name="notes" label={t.expenses.notes} placeholder={t.expenses.notesPlaceholder} />
-          <button className="focus-ring h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
+          {formError ? <p className="text-sm text-red-500">{formError}</p> : null}
+          <button
+            className="focus-ring h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
+            disabled={isSubmitting}
+          >
             {t.expenses.saveBtn}
           </button>
         </form>

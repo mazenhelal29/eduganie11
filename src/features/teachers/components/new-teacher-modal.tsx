@@ -24,18 +24,21 @@ export function NewTeacherModal({ onClose }: NewTeacherModalProps) {
     const fullName = formData.get("fullName") as string;
     const phone = formData.get("phone") as string;
     const subject = formData.get("subject") as string;
+    const paymentType = formData.get("paymentType") as "percentage" | "fixed_salary" | "per_session";
+    const rateStr = formData.get("rate") as string;
+    const rate = rateStr ? Number(rateStr) : undefined;
 
-    if (!fullName || !subject) {
+    if (!fullName || !subject || !paymentType || rate === undefined) {
       setError("Please fill all required fields");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      await addTeacher({ fullName, phone, subject });
+      await addTeacher({ fullName, phone, subject, paymentType, rate });
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to add teacher");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to add teacher");
       setIsSubmitting(false);
     }
   };
@@ -111,6 +114,36 @@ export function NewTeacherModal({ onClose }: NewTeacherModalProps) {
                   dir="ltr"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Payment Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="paymentType"
+                required
+                className="focus-ring h-11 w-full rounded-xl border border-input bg-background px-4 text-sm transition-colors hover:border-accent/50 focus:border-accent"
+              >
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed_salary">Fixed Monthly Salary</option>
+                <option value="per_session">Per Session Rate</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Rate / Amount <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="rate"
+                required
+                min="0"
+                step="0.01"
+                placeholder="e.g. 50"
+                className="focus-ring h-11 w-full rounded-xl border border-input bg-background px-4 text-sm transition-colors hover:border-accent/50 focus:border-accent"
+              />
             </div>
           </div>
 

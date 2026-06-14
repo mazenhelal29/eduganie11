@@ -199,7 +199,7 @@ export class SyncQueue {
           // Wait for response
           await new Promise((resolve) => {
             const timeout = setTimeout(resolve, 5000);
-            const handler = (e: Event) => {
+            const handler = () => {
               clearTimeout(timeout);
               resolve(null);
             };

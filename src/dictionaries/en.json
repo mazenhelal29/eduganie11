@@ -55,6 +55,7 @@
     "settings": "Settings",
     "dailyTasks": "Daily Tasks",
     "teachers": "Teachers",
+    "schedule": "Schedule",
     "mvpWorkspace": "Workspace"
   },
   "shell": {

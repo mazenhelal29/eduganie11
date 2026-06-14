@@ -2,20 +2,26 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppProviders } from "@/providers/app-providers";
 import { ServiceWorkerRegistration } from "@/components/shared/service-worker-registration";
+import { PWAInstallBanner } from "@/components/shared/pwa-install-banner";
 
 export const metadata: Metadata = {
   title: "EduGenie",
-  description: "Operations platform for teachers and education centers.",
+  description: "نظام إدارة المراكز التعليمية",
   applicationName: "EduGenie",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "EduGenie",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
+    startupImage: "/logo.jpg",
   },
   icons: {
     icon: "/logo.jpg",
     shortcut: "/logo.jpg",
     apple: "/logo.jpg",
+    other: [
+      { rel: "apple-touch-startup-image", url: "/logo.jpg" },
+    ],
   },
 };
 
@@ -37,6 +43,7 @@ export default function RootLayout({
         <AppProviders>
           {children}
           <ServiceWorkerRegistration />
+          <PWAInstallBanner />
         </AppProviders>
       </body>
     </html>

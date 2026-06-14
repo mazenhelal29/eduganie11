@@ -15,6 +15,8 @@ export type Teacher = TenantEntity & {
   fullName: string;
   phone: string;
   subject: string;
+  paymentType?: "percentage" | "fixed_salary" | "per_session";
+  rate?: number;
   isActive: boolean;
 };
 
@@ -37,6 +39,7 @@ export type GroupSchedule = {
 export type Group = TenantEntity & {
   name: string;
   subject: string;
+  teacherId?: string;
   schedule: GroupSchedule[];
   capacity: number;
   monthlySessions: number;
@@ -58,6 +61,12 @@ export type Expense = TenantEntity & {
   amount: number;
   spentAt: string;
   notes?: string;
+};
+
+export type StudentCard = TenantEntity & {
+  cardId: string;
+  studentId: string | null;
+  status: "active" | "lost" | "disabled";
 };
 
 export type AttendanceRecord = TenantEntity & {
