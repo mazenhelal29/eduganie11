@@ -72,7 +72,6 @@ export function CameraScanner({ onScan, paused = false }: CameraScannerProps) {
             setIsInitializing(false);
           }
         }
-        }
       } catch {
         console.error("Camera permissions error");
         if (mounted) {
