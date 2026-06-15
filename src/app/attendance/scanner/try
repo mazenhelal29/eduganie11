@@ -1,0 +1,42 @@
+const handleAddNewStudent = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!newStudentName.trim() || !newStudentPhone.trim()) return;
+
+  setIsAddingStudent(true);
+
+  try {
+    const newStudent = await addStudent({
+      fullName: newStudentName.trim(),
+      phone: newStudentPhone.trim(),
+      parentPhone: newStudentParentPhone.trim(),
+      groupId: newStudentGroupId || undefined,
+      notes: "",
+      teacherId: undefined,
+      cardId: scannedCardId,
+    });
+
+    await markAttendance(newStudent.id, "present").catch(() => {});
+
+    setScanState("success");
+    setStudentName(newStudentName.trim());
+    setMessage("تم إضافة الطالب وربط البطاقة وتسجيل الحضور!");
+    setFinancialAlert(null);
+    playSound("success");
+    toast.success("تم إضافة الطالب بنجاح");
+
+    resetStateAfterDelay();
+
+  } catch (error: unknown) {
+    console.error("Add student error:", error);
+
+    if (error instanceof Error) {
+      toast.error(error.message);
+    } else {
+      toast.error("حدث خطأ أثناء إضافة الطالب");
+    }
+
+  } finally {
+    setIsAddingStudent(false);
+  }
+};

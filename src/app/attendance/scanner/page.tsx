@@ -219,38 +219,49 @@ export default function ScannerPage() {
       if (inputRef.current && !useCamera) inputRef.current.focus();
     }, 3000); // UI resets after 3 seconds
   };
+  
+const handleAddNewStudent = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-  const handleAddNewStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStudentName.trim() || !newStudentPhone.trim()) return;
-    setIsAddingStudent(true);
-    try {
-      const newStudent = await addStudent({
-        fullName: newStudentName.trim(),
-        phone: newStudentPhone.trim(),
-        parentPhone: newStudentParentPhone.trim(),
-        groupId: newStudentGroupId || undefined,
-        notes: "",
-        teacherId: undefined,
-        cardId: scannedCardId,
-      });
+  if (!newStudentName.trim() || !newStudentPhone.trim()) return;
 
-      await markAttendance(newStudent.id, "present").catch(() => {});
+  setIsAddingStudent(true);
 
-      setScanState("success");
-      setStudentName(newStudentName.trim());
-      setMessage("تم إضافة الطالب وربط البطاقة وتسجيل الحضور!");
-      setFinancialAlert(null);
-      playSound("success");
-      toast.success("تم إضافة الطالب بنجاح");
-      resetStateAfterDelay();
-    } catch (error: any) {
-      console.error("Add student error:", error);
-      toast.error(error?.message || "حدث خطأ أثناء إضافة الطالب");
-    } finally {
-      setIsAddingStudent(false);
+  try {
+    const newStudent = await addStudent({
+      fullName: newStudentName.trim(),
+      phone: newStudentPhone.trim(),
+      parentPhone: newStudentParentPhone.trim(),
+      groupId: newStudentGroupId || undefined,
+      notes: "",
+      teacherId: undefined,
+      cardId: scannedCardId,
+    });
+
+    await markAttendance(newStudent.id, "present").catch(() => {});
+
+    setScanState("success");
+    setStudentName(newStudentName.trim());
+    setMessage("تم إضافة الطالب وربط البطاقة وتسجيل الحضور!");
+    setFinancialAlert(null);
+    playSound("success");
+    toast.success("تم إضافة الطالب بنجاح");
+
+    resetStateAfterDelay();
+
+  } catch (error: unknown) {
+    console.error("Add student error:", error);
+
+    if (error instanceof Error) {
+      toast.error(error.message);
+    } else {
+      toast.error("حدث خطأ أثناء إضافة الطالب");
     }
-  };
+
+  } finally {
+    setIsAddingStudent(false);
+  }
+};
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 overflow-hidden rounded-xl border border-slate-200">
