@@ -7,7 +7,7 @@ import { CreditCard, ScanLine, Search, User, CheckCircle2, AlertCircle } from "l
 
 export default function AssignCardPage() {
   const { students, cards, assignCard } = useEduGenie();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [cardInput, setCardInput] = useState("");
@@ -21,10 +21,10 @@ export default function AssignCardPage() {
     }
   }, [selectedStudentId]);
 
-  const filteredStudents = students.filter(s => 
-    s.status === "active" && 
-    (s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-     s.phone.includes(searchTerm))
+  const filteredStudents = students.filter(s =>
+    s.status === "active" &&
+    (s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.phone.includes(searchTerm))
   ).slice(0, 10);
 
   const selectedStudent = students.find(s => s.id === selectedStudentId);
@@ -90,7 +90,7 @@ export default function AssignCardPage() {
               <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-bold">1</span>
               اختر الطالب
             </h2>
-            
+
             <div className="relative mb-4">
               <Search className="absolute right-3 top-3 h-5 w-5 text-muted-foreground" />
               <input
@@ -109,11 +109,10 @@ export default function AssignCardPage() {
                   <button
                     key={student.id}
                     onClick={() => setSelectedStudentId(student.id)}
-                    className={`w-full text-right p-3 rounded-lg border transition-all ${
-                      selectedStudentId === student.id 
-                        ? "border-primary bg-primary/5 shadow-sm" 
+                    className={`w-full text-right p-3 rounded-lg border transition-all ${selectedStudentId === student.id
+                        ? "border-primary bg-primary/5 shadow-sm"
                         : "hover:border-primary/50 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3">

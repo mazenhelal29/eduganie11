@@ -2,13 +2,17 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useEduGenie } from "@/providers/edugenie-store";
-import { ScanLine, CheckCircle2, XCircle, AlertTriangle, Search, ClipboardList, Users, Clock, Camera } from "lucide-react";
+import { ScanLine, CheckCircle2, XCircle, AlertTriangle, Search, ClipboardList, Users, Clock, Camera, UserPlus, ArrowRight } from "lucide-react";
 import { CameraScanner } from "@/components/ui/camera-scanner";
+import { toast } from "@/components/ui/toast";
 
-type ScanState = "idle" | "success" | "error" | "warning" | "unregistered";
+import { useRouter } from "next/navigation";
+
+type ScanState = "idle" | "success" | "error" | "warning" | "unregistered" | "adding";
 
 export default function ScannerPage() {
-  const { cards, students, markAttendance, attendance, payments, assignCard, settings } = useEduGenie();
+  const router = useRouter();
+  const { cards, students, groups, markAttendance, attendance, payments, assignCard, addStudent, settings } = useEduGenie();
   const [inputValue, setInputValue] = useState("");
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [message, setMessage] = useState("");
@@ -17,8 +21,17 @@ export default function ScannerPage() {
   const [assignSearch, setAssignSearch] = useState("");
   const [financialAlert, setFinancialAlert] = useState<string | null>(null);
   const [useCamera, setUseCamera] = useState(false);
+  const [useAddingCamera, setUseAddingCamera] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // New Student Form State
+  const [unregisteredMode, setUnregisteredMode] = useState<"link" | "add">("link");
+  const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentPhone, setNewStudentPhone] = useState("");
+  const [newStudentParentPhone, setNewStudentParentPhone] = useState("");
+  const [newStudentGroupId, setNewStudentGroupId] = useState("");
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayAttendance = attendance.filter(a => a.attendedOn.startsWith(todayStr));
@@ -31,7 +44,7 @@ export default function ScannerPage() {
         inputRef.current.focus();
       }
     };
-    
+
     focusInput();
     window.addEventListener("click", focusInput);
     return () => window.removeEventListener("click", focusInput);
@@ -44,10 +57,10 @@ export default function ScannerPage() {
       const ctx = new AudioContextClass();
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
-      
+
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
-      
+
       if (type === "success") {
         osc.type = "sine";
         osc.frequency.setValueAtTime(800, ctx.currentTime);
@@ -95,7 +108,7 @@ export default function ScannerPage() {
 
     // 1. O(1) Lookup
     const card = cards[cardId];
-    
+
     if (!card || !card.studentId) {
       setScanState("unregistered");
       setScannedCardId(cardId);
@@ -151,8 +164,8 @@ export default function ScannerPage() {
 
     // 2. Check for duplicate scan today for same group
     const today = new Date().toISOString().slice(0, 10);
-    const hasAttended = attendance.some(a => 
-      a.studentId === student.id && 
+    const hasAttended = attendance.some(a =>
+      a.studentId === student.id &&
       a.attendedOn.startsWith(today) &&
       a.groupId === student.groupId
     );
@@ -170,7 +183,7 @@ export default function ScannerPage() {
       setScanState("success");
       setMessage("تم تسجيل الحضور بنجاح");
       playSound("success");
-      
+
       // Async call - store handles optimistic update & rollback
       markAttendance(student.id, "present").catch(err => {
         // This will happen if DB unique constraint fails or network fails
@@ -179,7 +192,7 @@ export default function ScannerPage() {
         setMessage("عذراً، تعذر تأكيد الحضور (قد يكون مسجلاً بالفعل)");
         playSound("warning");
       });
-      
+
     } catch {
       setScanState("error");
       setMessage("حدث خطأ في النظام");
@@ -196,75 +209,147 @@ export default function ScannerPage() {
       setStudentName("");
       setScannedCardId("");
       setAssignSearch("");
+      setUnregisteredMode("link");
+      setNewStudentName("");
+      setNewStudentPhone("");
+      setNewStudentParentPhone("");
+      setNewStudentGroupId("");
       setFinancialAlert(null);
       // Ensure input gets focus back automatically if not using camera
       if (inputRef.current && !useCamera) inputRef.current.focus();
     }, 3000); // UI resets after 3 seconds
   };
+
+  const handleAddNewStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStudentName.trim() || !newStudentPhone.trim()) return;
+    setIsAddingStudent(true);
+    try {
+      const newStudent = await addStudent({
+        fullName: newStudentName.trim(),
+        phone: newStudentPhone.trim(),
+        parentPhone: newStudentParentPhone.trim(),
+        groupId: newStudentGroupId || undefined,
+        notes: "",
+        teacherId: undefined,
+        cardId: scannedCardId,
+      });
+
+      await markAttendance(newStudent.id, "present").catch(() => {});
+
+      setScanState("success");
+      setStudentName(newStudentName.trim());
+      setMessage("تم إضافة الطالب وربط البطاقة وتسجيل الحضور!");
+      setFinancialAlert(null);
+      playSound("success");
+      toast.success("تم إضافة الطالب بنجاح");
+      resetStateAfterDelay();
+    } catch (error: any) {
+      console.error("Add student error:", error);
+      toast.error(error?.message || "حدث خطأ أثناء إضافة الطالب");
+    } finally {
+      setIsAddingStudent(false);
+    }
+  };
+
   return (
-    <div className="flex h-[calc(100vh-80px)] bg-slate-50 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 overflow-hidden rounded-xl border border-slate-200">
       
-      {/* Hidden Scanner Input */}
-      <form onSubmit={handleScan} className="absolute opacity-0 pointer-events-none">
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          autoFocus
-        />
-        <button type="submit">Scan</button>
-      </form>
+      {/* Scanner Header Controls */}
+      <div className="flex items-center justify-between p-3 sm:p-4 bg-white border-b border-slate-200 shadow-sm z-30 shrink-0">
+        {/* Back Button - always visible with text */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors font-bold text-sm sm:text-base"
+        >
+          <ArrowRight className="w-5 h-5" />
+          <span>رجوع</span>
+        </button>
 
-      {/* Main Scanner Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-        <div className="absolute top-6 left-6 z-20">
-          <button
-            onClick={() => setUseCamera(!useCamera)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all shadow-md border-2 ${
-              useCamera 
-                ? 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200' 
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-            }`}
-          >
-            <Camera className="w-5 h-5" />
-            {useCamera ? 'إيقاف الكاميرا' : 'فتح الكاميرا 📷'}
-          </button>
-        </div>
+        {/* Add Student Button - always visible with text */}
+        <button
+          onClick={() => {
+            setScanState("adding");
+            setScannedCardId("");
+            setNewStudentName("");
+            setNewStudentPhone("");
+            setNewStudentParentPhone("");
+            setNewStudentGroupId("");
+            setUseAddingCamera(false);
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm sm:text-base font-bold transition-all shadow-sm bg-amber-500 text-white hover:bg-amber-600 active:scale-95"
+        >
+          <UserPlus className="w-5 h-5" />
+          <span>إضافة طالب</span>
+        </button>
+      </div>
 
-        <div className={`w-full max-w-2xl rounded-3xl p-12 text-center transition-all duration-300 shadow-2xl ${
-          scanState === 'idle' ? 'bg-white border-2 border-slate-200' :
-          scanState === 'success' ? 'bg-emerald-500 border-emerald-600 scale-105' :
-          scanState === 'error' ? 'bg-red-500 border-red-600 scale-105' :
-          scanState === 'unregistered' ? 'bg-white border-2 border-amber-500 shadow-amber-500/20 scale-105' :
-          'bg-amber-500 border-amber-600 scale-105'
-        }`}>
-          
+      <div className="flex-1 flex overflow-hidden">
+        {/* Hidden Scanner Input */}
+        <form onSubmit={handleScan} className="absolute opacity-0 pointer-events-none">
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            autoFocus
+          />
+          <button type="submit">Scan</button>
+        </form>
+
+        {/* Main Scanner Area */}
+        <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-y-auto">
+
+
+        <div className={`w-full max-w-2xl rounded-3xl p-8 sm:p-12 text-center transition-all duration-300 shadow-2xl ${scanState === 'idle' ? 'bg-white border-2 border-slate-200' :
+            scanState === 'success' ? 'bg-emerald-500 border-emerald-600 scale-105' :
+              scanState === 'error' ? 'bg-red-500 border-red-600 scale-105' :
+                (scanState === 'unregistered' || scanState === 'adding') ? 'bg-white border-2 border-amber-500 shadow-amber-500/20 scale-105' :
+                  'bg-amber-500 border-amber-600 scale-105'
+          }`}>
+
           {scanState === 'idle' && !useCamera && (
             <div className="space-y-6 text-slate-400 flex flex-col items-center">
-              <ScanLine className="w-32 h-32 animate-pulse text-slate-300" />
-              <h2 className="text-3xl font-bold text-slate-600">جاهز للمسح</h2>
-              <p className="text-xl">قم بتمرير البطاقة على جهاز القارئ...</p>
+              <ScanLine className="w-24 h-24 sm:w-32 sm:h-32 animate-pulse text-slate-300" />
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-600">جاهز للمسح</h2>
+              <p className="text-lg sm:text-xl">قم بتمرير البطاقة على جهاز القارئ...</p>
+              
+              {/* Camera Toggle Button - positioned naturally in the scanner area */}
+              <button
+                onClick={() => setUseCamera(true)}
+                className="mt-4 flex items-center gap-3 px-6 py-3 rounded-2xl text-base font-bold transition-all shadow-md border-2 bg-gradient-to-l from-blue-500 to-blue-600 text-white border-blue-600 hover:from-blue-600 hover:to-blue-700 active:scale-95"
+              >
+                <Camera className="w-5 h-5" />
+                <span>فتح الكاميرا لمسح QR</span>
+              </button>
             </div>
           )}
 
           {scanState === 'idle' && useCamera && (
             <div className="space-y-6 flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              <h2 className="text-2xl font-bold text-slate-700 mb-2">وجّه الكاميرا نحو الـ QR Code</h2>
-              <CameraScanner 
-                onScan={processScan} 
-                paused={scanState !== 'idle'} 
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-700 mb-2">وجّه الكاميرا نحو الـ QR Code</h2>
+              <CameraScanner
+                onScan={processScan}
+                paused={scanState !== 'idle'}
               />
+              {/* Stop Camera Button */}
+              <button
+                onClick={() => setUseCamera(false)}
+                className="mt-2 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border-2 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 active:scale-95"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>إيقاف الكاميرا</span>
+              </button>
             </div>
           )}
 
           {scanState === 'success' && (
             <div className="space-y-6 text-white flex flex-col items-center animate-in zoom-in duration-200">
-              <CheckCircle2 className="w-32 h-32" />
-              <h2 className="text-4xl font-bold">{studentName}</h2>
-              <p className="text-2xl opacity-90">{message}</p>
+              <CheckCircle2 className="w-24 h-24 sm:w-32 sm:h-32" />
+              <h2 className="text-3xl sm:text-4xl font-bold">{studentName}</h2>
+              <p className="text-xl sm:text-2xl opacity-90">{message}</p>
               {financialAlert && (
-                <div className="mt-4 bg-white/20 text-white font-bold py-2 px-6 rounded-full text-xl animate-bounce">
+                <div className="mt-4 bg-white/20 text-white font-bold py-2 px-6 rounded-full text-lg sm:text-xl animate-bounce">
                   {financialAlert}
                 </div>
               )}
@@ -273,19 +358,19 @@ export default function ScannerPage() {
 
           {scanState === 'error' && (
             <div className="space-y-6 text-white flex flex-col items-center animate-in zoom-in duration-200">
-              <XCircle className="w-32 h-32" />
-              <h2 className="text-4xl font-bold">خطأ!</h2>
-              <p className="text-2xl opacity-90">{message}</p>
+              <XCircle className="w-24 h-24 sm:w-32 sm:h-32" />
+              <h2 className="text-3xl sm:text-4xl font-bold">خطأ!</h2>
+              <p className="text-xl sm:text-2xl opacity-90">{message}</p>
             </div>
           )}
 
           {scanState === 'warning' && (
             <div className="space-y-6 text-white flex flex-col items-center animate-in zoom-in duration-200">
-              <AlertTriangle className="w-32 h-32" />
-              <h2 className="text-4xl font-bold">{studentName}</h2>
-              <p className="text-2xl opacity-90">{message}</p>
+              <AlertTriangle className="w-24 h-24 sm:w-32 sm:h-32" />
+              <h2 className="text-3xl sm:text-4xl font-bold">{studentName}</h2>
+              <p className="text-xl sm:text-2xl opacity-90">{message}</p>
               {financialAlert && (
-                <div className="mt-4 bg-white/20 text-white font-bold py-2 px-6 rounded-full text-xl">
+                <div className="mt-4 bg-white/20 text-white font-bold py-2 px-6 rounded-full text-lg sm:text-xl">
                   {financialAlert}
                 </div>
               )}
@@ -295,51 +380,118 @@ export default function ScannerPage() {
           {scanState === 'unregistered' && (
             <div className="space-y-6 flex flex-col items-center animate-in zoom-in duration-200 w-full">
               <AlertTriangle className="w-24 h-24 text-amber-500" />
-              <h2 className="text-3xl font-bold text-amber-600">بطاقة غير مسجلة!</h2>
-              <p className="text-xl text-slate-600">{message}</p>
-              
+              <h2 className="text-3xl font-bold text-amber-600">بطاقة مجهولة!</h2>
+              <p className="text-xl text-slate-600">هذه البطاقة غير مسجلة. ماذا تريد أن تفعل؟</p>
+
               <div className="w-full max-w-sm mt-4 text-left">
-                <div className="relative mb-3">
-                  <Search className="absolute right-3 top-3 h-5 w-5 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="ابحث عن طالب لربط البطاقة..."
-                    className="w-full pl-4 pr-10 py-3 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 text-lg bg-slate-50"
-                    value={assignSearch}
-                    onChange={e => setAssignSearch(e.target.value)}
-                    autoFocus
-                  />
+                {/* Tabs */}
+                <div className="flex border-b-2 border-slate-200 mb-4">
+                  <button
+                    onClick={() => setUnregisteredMode("link")}
+                    className={`flex-1 py-2 font-bold text-center transition-all ${unregisteredMode === "link" ? "text-amber-600 border-b-2 border-amber-500 -mb-[2px]" : "text-slate-400 hover:text-slate-600"}`}
+                  >
+                    ربط بطالب مسجل
+                  </button>
+                  <button
+                    onClick={() => setUnregisteredMode("add")}
+                    className={`flex-1 py-2 font-bold text-center transition-all ${unregisteredMode === "add" ? "text-amber-600 border-b-2 border-amber-500 -mb-[2px]" : "text-slate-400 hover:text-slate-600"}`}
+                  >
+                    إضافة طالب جديد
+                  </button>
                 </div>
-                <div className="max-h-[180px] overflow-y-auto space-y-2 custom-scrollbar">
-                  {students.filter(s => s.status === "active" && (s.fullName.includes(assignSearch) || s.phone.includes(assignSearch))).slice(0, 5).map(s => (
-                    <button 
-                      key={s.id}
-                      onClick={async () => {
-                        try {
-                          await assignCard(scannedCardId, s.id);
-                          await markAttendance(s.id, "present");
-                          setScanState("success");
-                          setStudentName(s.fullName);
-                          setMessage("تم الربط وتسجيل الحضور بنجاح!");
-                          setFinancialAlert(null);
-                          playSound("success");
-                          resetStateAfterDelay();
-                        } catch {
-                          setScanState("error");
-                          setMessage("حدث خطأ أثناء الربط");
-                          playSound("error");
-                          resetStateAfterDelay();
-                        }
-                      }}
-                      className="w-full text-right p-3 rounded-lg bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 text-slate-700 transition-colors font-medium flex justify-between items-center"
+
+                {unregisteredMode === "link" ? (
+                  <>
+                    <div className="relative mb-3">
+                      <Search className="absolute right-3 top-3 h-5 w-5 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="ابحث عن طالب لربط البطاقة..."
+                        className="w-full pl-4 pr-10 py-3 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 text-lg bg-slate-50"
+                        value={assignSearch}
+                        onChange={e => setAssignSearch(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-[180px] overflow-y-auto space-y-2 custom-scrollbar">
+                      {students.filter(s => s.status === "active" && (s.fullName.includes(assignSearch) || s.phone.includes(assignSearch))).slice(0, 5).map(s => (
+                        <button
+                          key={s.id}
+                          onClick={async () => {
+                            try {
+                              await assignCard(scannedCardId, s.id);
+                              await markAttendance(s.id, "present");
+                              setScanState("success");
+                              setStudentName(s.fullName);
+                              setMessage("تم الربط وتسجيل الحضور بنجاح!");
+                              setFinancialAlert(null);
+                              playSound("success");
+                              resetStateAfterDelay();
+                            } catch {
+                              setScanState("error");
+                              setMessage("حدث خطأ أثناء الربط");
+                              playSound("error");
+                              resetStateAfterDelay();
+                            }
+                          }}
+                          className="w-full text-right p-3 rounded-lg bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 text-slate-700 transition-colors font-medium flex justify-between items-center"
+                        >
+                          <span>{s.fullName}</span>
+                          <span className="text-sm text-slate-400" dir="ltr">{s.phone}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <form onSubmit={handleAddNewStudent} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="اسم الطالب (إلزامي)"
+                      className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                      value={newStudentName}
+                      onChange={e => setNewStudentName(e.target.value)}
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="tel"
+                        placeholder="الهاتف (إلزامي)"
+                        className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                        value={newStudentPhone}
+                        onChange={e => setNewStudentPhone(e.target.value)}
+                        required
+                      />
+                      <input
+                        type="tel"
+                        placeholder="هاتف ولي الأمر"
+                        className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                        value={newStudentParentPhone}
+                        onChange={e => setNewStudentParentPhone(e.target.value)}
+                      />
+                    </div>
+                    <select
+                      className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                      value={newStudentGroupId}
+                      onChange={e => setNewStudentGroupId(e.target.value)}
                     >
-                      <span>{s.fullName}</span>
-                      <span className="text-sm text-slate-400" dir="ltr">{s.phone}</span>
+                      <option value="">بدون مجموعة</option>
+                      {groups.filter(g => g.isActive).map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={isAddingStudent || !newStudentName.trim() || !newStudentPhone.trim()}
+                      className="w-full mt-2 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      <UserPlus className="w-5 h-5" />
+                      {isAddingStudent ? "جاري الإضافة..." : "حفظ وربط البطاقة"}
                     </button>
-                  ))}
-                </div>
-                <button 
-                  onClick={() => { setScanState("idle"); setScannedCardId(""); setAssignSearch(""); if(inputRef.current) inputRef.current.focus(); }}
+                  </form>
+                )}
+
+                <button
+                  onClick={() => { setScanState("idle"); setScannedCardId(""); setAssignSearch(""); setUnregisteredMode("link"); setUseAddingCamera(false); if (inputRef.current) inputRef.current.focus(); }}
                   className="w-full mt-4 py-3 border-2 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
                   type="button"
                 >
@@ -349,9 +501,111 @@ export default function ScannerPage() {
             </div>
           )}
 
+          {scanState === 'adding' && (
+            <div className="space-y-6 flex flex-col items-center animate-in zoom-in duration-200 w-full">
+              <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center text-amber-500 mb-2">
+                <UserPlus className="w-10 h-10" />
+              </div>
+              <h2 className="text-3xl font-bold text-slate-800">إضافة طالب جديد</h2>
+              <p className="text-xl text-slate-600">أدخل بيانات الطالب لتسجيله في النظام فوراً</p>
+
+              <div className="w-full max-w-sm mt-4 text-left">
+                <form onSubmit={handleAddNewStudent} className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="اسم الطالب (إلزامي)"
+                    className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                    value={newStudentName}
+                    onChange={e => setNewStudentName(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="tel"
+                      placeholder="الهاتف (إلزامي)"
+                      className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                      value={newStudentPhone}
+                      onChange={e => setNewStudentPhone(e.target.value)}
+                      required
+                    />
+                    <input
+                      type="tel"
+                      placeholder="هاتف ولي الأمر"
+                      className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                      value={newStudentParentPhone}
+                      onChange={e => setNewStudentParentPhone(e.target.value)}
+                    />
+                  </div>
+                  <div className="relative">
+                    <ScanLine className="absolute right-3 top-3 h-5 w-5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="رقم البطاقة (اختياري - مرر البطاقة هنا)"
+                      className="w-full pl-4 pr-10 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                      value={scannedCardId}
+                      onChange={e => setScannedCardId(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setUseAddingCamera(!useAddingCamera)}
+                      className={`absolute left-2 top-1.5 p-1.5 rounded-lg transition-colors ${useAddingCamera ? "bg-amber-100 text-amber-600" : "bg-slate-100 hover:bg-slate-200 text-slate-500"}`}
+                      title="فتح الكاميرا لقراءة الكود"
+                    >
+                      <Camera className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  {useAddingCamera && (
+                    <div className="border-2 border-amber-200 rounded-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                      <CameraScanner
+                        onScan={(id) => {
+                          setScannedCardId(id);
+                          setUseAddingCamera(false);
+                          playSound("success");
+                        }}
+                        paused={!useAddingCamera}
+                      />
+                      <div className="bg-amber-50 p-2 text-center text-sm font-medium text-amber-700">
+                        وجّه الكاميرا نحو الـ QR Code
+                      </div>
+                    </div>
+                  )}
+
+                  <select
+                    className="w-full px-3 py-2 border-2 rounded-xl outline-none focus:border-amber-500 text-slate-800 bg-slate-50"
+                    value={newStudentGroupId}
+                    onChange={e => setNewStudentGroupId(e.target.value)}
+                  >
+                    <option value="">بدون مجموعة</option>
+                    {groups.filter(g => g.isActive).map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={isAddingStudent || !newStudentName.trim() || !newStudentPhone.trim()}
+                    className="w-full mt-4 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    {isAddingStudent ? "جاري الإضافة..." : "حفظ الطالب وتسجيل حضوره"}
+                  </button>
+                </form>
+
+                <button
+                  onClick={() => { setScanState("idle"); setUseAddingCamera(false); if (inputRef.current) inputRef.current.focus(); }}
+                  className="w-full mt-3 py-3 border-2 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                  type="button"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
-        
-        {!useCamera && (
+
+        {!useCamera && scanState === 'idle' && (
           <div className="mt-8 text-slate-400 font-medium">
             (القارئ يعمل في الخلفية دائماً، لا حاجة للنقر على أي شيء)
           </div>
@@ -374,7 +628,7 @@ export default function ScannerPage() {
             <span className="text-2xl font-black text-primary">{todayAttendance.length}</span>
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
           {recentScans.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
@@ -385,7 +639,7 @@ export default function ScannerPage() {
             recentScans.map((record) => {
               const s = students.find(x => x.id === record.studentId);
               if (!s) return null;
-              
+
               const isLate = record.status === 'late';
               const timeStr = new Date(record.createdAt).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' });
 
@@ -408,6 +662,7 @@ export default function ScannerPage() {
         </div>
       </div>
 
+      </div>
     </div>
   );
 }

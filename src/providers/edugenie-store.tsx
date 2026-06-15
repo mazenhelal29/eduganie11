@@ -30,7 +30,7 @@ type NewExpense = Pick<Expense, "category" | "amount" | "notes">;
 
 type EduGenieActions = {
   updateSettings: (settings: Partial<EduGenieState["settings"]>) => Promise<void>;
-  addStudent: (student: NewStudent) => Promise<void>;
+  addStudent: (student: NewStudent) => Promise<Student>;
   archiveStudent: (studentId: string) => Promise<void>;
   addGroup: (group: NewGroup) => Promise<void>;
   markAttendance: (studentId: string, status: AttendanceRecord["status"]) => Promise<void>;
@@ -226,80 +226,80 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
       }
 
       const task = (async () => {
-      try {
-        // 1. Get the current user's tenant ID
-        const activeTenantId = await fetchUserTenant(supabase);
-        
-        if (!activeTenantId) {
-          // No logged-in user — reset state and stop loading
-          dispatch({ type: "reset" });
-          dispatch({ type: "setLoading", payload: false });
-          return;
-        }
+        try {
+          // 1. Get the current user's tenant ID
+          const activeTenantId = await fetchUserTenant(supabase);
 
-        // Update tenantId if it changed and clear previous data if switching accounts
-        setTenantId((prev) => {
-          if (prev && activeTenantId.tenantId !== prev) {
+          if (!activeTenantId) {
+            // No logged-in user — reset state and stop loading
             dispatch({ type: "reset" });
-          }
-          return activeTenantId.tenantId;
-        });
-
-        // Super admin without a tenant - just mark as loaded with isSuperAdmin flag
-        if (activeTenantId.isSuperAdmin && !activeTenantId.tenantId) {
-          dispatch({
-            type: "hydrate",
-            payload: {
-              ...initialState,
-              isSuperAdmin: true,
-              subscription: { endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), isActive: true },
-            },
-          });
-          return;
-        }
-
-
-        // 2. Try to load from cache for instant UI (optional)
-        const cached = readTenantCache(activeTenantId.tenantId);
-        if (cached) {
-          dispatch({ type: "hydrate", payload: { ...cached.data, isSuperAdmin: activeTenantId.isSuperAdmin } });
-          if (!force && Date.now() - cached.savedAt < CACHE_TTL_MS) {
+            dispatch({ type: "setLoading", payload: false });
             return;
           }
+
+          // Update tenantId if it changed and clear previous data if switching accounts
+          setTenantId((prev) => {
+            if (prev && activeTenantId.tenantId !== prev) {
+              dispatch({ type: "reset" });
+            }
+            return activeTenantId.tenantId;
+          });
+
+          // Super admin without a tenant - just mark as loaded with isSuperAdmin flag
+          if (activeTenantId.isSuperAdmin && !activeTenantId.tenantId) {
+            dispatch({
+              type: "hydrate",
+              payload: {
+                ...initialState,
+                isSuperAdmin: true,
+                subscription: { endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), isActive: true },
+              },
+            });
+            return;
+          }
+
+
+          // 2. Try to load from cache for instant UI (optional)
+          const cached = readTenantCache(activeTenantId.tenantId);
+          if (cached) {
+            dispatch({ type: "hydrate", payload: { ...cached.data, isSuperAdmin: activeTenantId.isSuperAdmin } });
+            if (!force && Date.now() - cached.savedAt < CACHE_TTL_MS) {
+              return;
+            }
+          }
+
+          // 3. Always fetch fresh data from Supabase (don't rely on cache)
+          const data = await fetchTenantData(supabase, activeTenantId.tenantId!);
+
+          const now = new Date();
+          const endDate = new Date(data.subscription.endDate);
+          const isActive = endDate > now;
+
+          const cardsRecord = data.cards.reduce((acc, card) => {
+            acc[card.cardId] = card;
+            return acc;
+          }, {} as Record<string, StudentCard>);
+
+          const { cards, ...restData } = data;
+          void cards;
+          const finalData = {
+            ...restData,
+            cards: cardsRecord,
+            isSuperAdmin: activeTenantId.isSuperAdmin,
+            subscription: { endDate: data.subscription.endDate, isActive },
+          };
+
+          dispatch({ type: "hydrate", payload: finalData });
+          lastFetchAt.current = Date.now();
+          // Update cache with fresh data
+          writeTenantCache(activeTenantId.tenantId!, finalData);
+        } catch (error) {
+          console.error("Error loading data:", error);
+          dispatch({ type: "setLoading", payload: false });
+        } finally {
+          activeLoad.current = null;
         }
-
-        // 3. Always fetch fresh data from Supabase (don't rely on cache)
-        const data = await fetchTenantData(supabase, activeTenantId.tenantId!);
-        
-        const now = new Date();
-        const endDate = new Date(data.subscription.endDate);
-        const isActive = endDate > now;
-        
-        const cardsRecord = data.cards.reduce((acc, card) => {
-          acc[card.cardId] = card;
-          return acc;
-        }, {} as Record<string, StudentCard>);
-
-        const { cards, ...restData } = data;
-        void cards;
-        const finalData = {
-          ...restData,
-          cards: cardsRecord,
-          isSuperAdmin: activeTenantId.isSuperAdmin,
-          subscription: { endDate: data.subscription.endDate, isActive },
-        };
-        
-        dispatch({ type: "hydrate", payload: finalData });
-        lastFetchAt.current = Date.now();
-        // Update cache with fresh data
-        writeTenantCache(activeTenantId.tenantId!, finalData);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        dispatch({ type: "setLoading", payload: false });
-      } finally {
-        activeLoad.current = null;
-      }
-    })();
+      })();
 
       activeLoad.current = task;
       return task;
@@ -368,7 +368,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
     const todayAttendance = state.attendance.filter((record) => record.attendedOn === today);
     const presentCount = todayAttendance.filter((record) => record.status === "present" || record.status === "late").length;
     const currentMonthStr = today.slice(0, 7);
-    
+
     const monthlyRevenue = state.payments
       .filter((p) => p.forMonth === currentMonthStr || p.paidAt?.startsWith(currentMonthStr))
       .reduce((sum, payment) => sum + payment.amount, 0);
@@ -407,11 +407,11 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await fetchTenantData(supabase, activeTenantId.tenantId!);
       setTenantId(activeTenantId.tenantId);
-      
+
       const now = new Date();
       const endDate = new Date(data.subscription.endDate);
       const isActive = endDate > now;
-      
+
       const cardsRecord = data.cards.reduce((acc, card) => {
         acc[card.cardId] = card;
         return acc;
@@ -425,7 +425,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
         isSuperAdmin: activeTenantId.isSuperAdmin,
         subscription: { endDate: data.subscription.endDate, isActive },
       };
-      
+
       dispatch({ type: "hydrate", payload: finalData });
       lastFetchAt.current = Date.now();
       writeTenantCache(activeTenantId.tenantId!, finalData);
@@ -517,6 +517,22 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
 
         const { cardId, ...studentData } = payload;
 
+        if (cardId) {
+          const trimmedCardId = cardId.trim();
+          
+          // Direct DB check for absolute certainty
+          const { data: existingDbCard } = await supabase
+            .from("cards")
+            .select("student_id, status")
+            .eq("tenant_id", tenantId)
+            .eq("card_id", trimmedCardId)
+            .maybeSingle();
+
+          if (existingDbCard && existingDbCard.student_id && existingDbCard.status === "active") {
+            throw new Error("هذه البطاقة مستخدمة بالفعل لطالب آخر");
+          }
+        }
+
         const student: Student = makeEntity({
           ...studentData,
           status: "active",
@@ -530,10 +546,10 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             tenant_id: tenantId,
             full_name: student.fullName,
             phone: student.phone,
-            parent_phone: student.parentPhone,
-            notes: student.notes,
-            group_id: student.groupId,
-            teacher_id: student.teacherId,
+            parent_phone: student.parentPhone || null,
+            notes: student.notes || null,
+            group_id: student.groupId || null,
+            teacher_id: student.teacherId || null,
             status: student.status,
           });
 
@@ -570,6 +586,8 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
               status: "active",
             }, { onConflict: "tenant_id,card_id" });
           }
+
+          return student;
         } catch (error) {
           console.error("Error adding student:", error);
           throw error;
@@ -596,7 +614,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
         if (!tenantId) throw new Error("No tenant ID found");
         const existing = state.students.find(s => s.id === studentId);
         if (!existing) throw new Error("Student not found");
-        
+
         const updated = {
           ...existing,
           ...data,
@@ -613,7 +631,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             teacher_id: updated.teacherId,
             updated_at: updated.updatedAt,
           }).eq("id", studentId);
-          
+
           if (error) throw error;
           dispatch({ type: "updateStudent", payload: updated });
         } catch (error) {
@@ -659,7 +677,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
         if (!tenantId) throw new Error("No tenant ID found");
         const existing = state.groups.find(g => g.id === groupId);
         if (!existing) throw new Error("Group not found");
-        
+
         const updated = {
           ...existing,
           ...data,
@@ -677,7 +695,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             monthly_price: updated.monthlyPrice,
             updated_at: updated.updatedAt,
           }).eq("id", groupId);
-          
+
           if (error) throw error;
           dispatch({ type: "updateGroup", payload: updated });
         } catch (error) {
@@ -692,7 +710,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             is_active: false,
             updated_at: new Date().toISOString(),
           }).eq("id", groupId);
-          
+
           if (error) throw error;
           dispatch({ type: "updateGroupStatus", payload: { id: groupId, isActive: false } });
         } catch (error) {
@@ -702,12 +720,26 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
       },
       assignCard: async (cardId, studentId) => {
         if (!tenantId) throw new Error("No tenant ID found");
+
+        const trimmedCardId = cardId.trim();
         
+        // Direct DB check for absolute certainty
+        const { data: existingDbCard } = await supabase
+          .from("cards")
+          .select("student_id, status")
+          .eq("tenant_id", tenantId)
+          .eq("card_id", trimmedCardId)
+          .maybeSingle();
+
+        if (existingDbCard && existingDbCard.student_id && existingDbCard.student_id !== studentId && existingDbCard.status === "active") {
+          throw new Error("هذه البطاقة مستخدمة بالفعل لطالب آخر");
+        }
+
         // Optimistically create the card payload
         const cardRecord: StudentCard = {
           id: crypto.randomUUID(), // Temporarily random until DB returns
           tenantId,
-          cardId,
+          cardId: trimmedCardId,
           studentId,
           status: "active",
           createdAt: new Date().toISOString(),
@@ -727,7 +759,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           // Wait, this is best handled via upsert or a separate RPC. We will upsert the new one.
           // In a real scenario, we might want to disable previous cards first.
           // For now, we update the card_id to point to the student.
-          
+
           const { data, error } = await supabase.from("cards").upsert({
             id: cardRecord.id,
             tenant_id: tenantId,
@@ -737,14 +769,16 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           }, { onConflict: "tenant_id,card_id" }).select().single();
 
           if (error) throw error;
-          
+
           // Update state with actual DB ID
-          dispatch({ type: "assignCard", payload: {
-            ...cardRecord,
-            id: data.id,
-            createdAt: data.created_at,
-            updatedAt: data.updated_at,
-          } });
+          dispatch({
+            type: "assignCard", payload: {
+              ...cardRecord,
+              id: data.id,
+              createdAt: data.created_at,
+              updatedAt: data.updated_at,
+            }
+          });
         } catch (error) {
           console.error("Error assigning card:", error);
           // Rollback: Reload data or dispatch reverse action
@@ -890,7 +924,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
         if (!tenantId) throw new Error("No tenant ID found");
         const existing = state.teachers.find(t => t.id === teacherId);
         if (!existing) throw new Error("Teacher not found");
-        
+
         const updated = {
           ...existing,
           ...data,
@@ -907,7 +941,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
             is_active: updated.isActive,
             updated_at: updated.updatedAt,
           }).eq("id", teacherId);
-          
+
           if (error) throw error;
           dispatch({ type: "updateTeacher", payload: updated });
         } catch (error) {

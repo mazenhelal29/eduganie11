@@ -15,15 +15,15 @@ const ITEMS_PER_PAGE = 50;
 export function StudentsPage() {
   // Refresh data when this page is visible
   useDataRefresh();
-  
+
   const { addStudent, editStudent, archiveStudent, groups, students, teachers, attendance, assignCard, cards } = useEduGenie();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [assigningCardTo, setAssigningCardTo] = useState<{id: string, name: string} | null>(null);
+  const [assigningCardTo, setAssigningCardTo] = useState<{ id: string, name: string } | null>(null);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const { t } = useTranslation();
 
@@ -99,10 +99,10 @@ export function StudentsPage() {
             ))}
           </SelectField>
           <Field name="notes" label={t.students.notes} placeholder={t.students.notesPlaceholder} />
-          <Field 
-            name="cardId" 
-            label="رقم البطاقة (QR/Barcode) - اختياري" 
-            placeholder="مرر البطاقة هنا..." 
+          <Field
+            name="cardId"
+            label="رقم البطاقة (QR/Barcode) - اختياري"
+            placeholder="مرر البطاقة هنا..."
             type="text"
           />
           {formError ? <p className="text-sm text-red-500">{formError}</p> : null}
@@ -142,8 +142,8 @@ export function StudentsPage() {
                   return acc;
                 }, {} as Record<string, typeof paginatedStudents>)
               ).map(([groupId, groupStudents]) => {
-                const groupName = groupId === "unassigned" 
-                  ? t.students.noGroup 
+                const groupName = groupId === "unassigned"
+                  ? t.students.noGroup
                   : groups.find((g) => g.id === groupId)?.name || t.students.noGroup;
 
                 return (
@@ -156,7 +156,7 @@ export function StudentsPage() {
                       {groupStudents.map((student) => {
                         const isEditing = editingStudentId === student.id;
                         const whatsappNumber = student.phone || student.parentPhone;
-                        
+
                         if (isEditing) {
                           return (
                             <article key={student.id} className="rounded-md border p-3 bg-muted/20">
@@ -229,15 +229,15 @@ export function StudentsPage() {
                                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 transition-all hover:bg-emerald-500 hover:text-white"
                                       title="مراسلة عبر واتساب"
                                     >
-                                      <svg 
-                                        xmlns="http://www.w3.org/2000/svg" 
-                                        width="14" 
-                                        height="14" 
-                                        viewBox="0 0 24 24" 
-                                        fill="none" 
-                                        stroke="currentColor" 
-                                        strokeWidth="2" 
-                                        strokeLinecap="round" 
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
                                         strokeLinejoin="round"
                                       >
                                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
@@ -254,7 +254,7 @@ export function StudentsPage() {
                                   )}
                                   <span className="rounded-md bg-muted px-2 py-0.5">
                                     {t.students.joinTime || "وقت الانضمام:"} {new Date(student.createdAt).toLocaleTimeString(
-                                      t.common?.switchLang === "English" ? "ar-EG" : "en-US", 
+                                      t.common?.switchLang === "English" ? "ar-EG" : "en-US",
                                       { hour: '2-digit', minute: '2-digit' }
                                     )}
                                   </span>
@@ -282,7 +282,7 @@ export function StudentsPage() {
                                 </button>
                                 <button
                                   className="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30"
-                                  onClick={() => setAssigningCardTo({id: student.id, name: student.fullName})}
+                                  onClick={() => setAssigningCardTo({ id: student.id, name: student.fullName })}
                                   type="button"
                                   title="ربط بطاقة سريعة"
                                 >
@@ -291,7 +291,7 @@ export function StudentsPage() {
                                 <button
                                   className="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                                   onClick={async () => {
-                                    if(confirm("هل أنت متأكد من أرشفة هذا الطالب؟")) {
+                                    if (confirm("هل أنت متأكد من أرشفة هذا الطالب؟")) {
                                       try {
                                         await archiveStudent(student.id);
                                         toast.success("تم أرشفة الطالب");
@@ -314,7 +314,7 @@ export function StudentsPage() {
                   </div>
                 );
               })}
-              
+
               {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t pt-4 mt-6">
@@ -361,7 +361,7 @@ export function StudentsPage() {
                 const form = e.currentTarget;
                 const cardId = (new FormData(form).get("cardId") as string).trim();
                 if (!cardId) return;
-                
+
                 const cardInUse = cards[cardId];
                 if (cardInUse && cardInUse.studentId && cardInUse.studentId !== assigningCardTo.id && cardInUse.status === 'active') {
                   toast.error("هذه البطاقة مستخدمة مسبقاً لطالب آخر!");
@@ -373,8 +373,8 @@ export function StudentsPage() {
                   await assignCard(cardId, assigningCardTo.id);
                   toast.success("تم ربط البطاقة بنجاح!");
                   setAssigningCardTo(null);
-                } catch {
-                  toast.error("حدث خطأ أثناء الربط. حاول مرة أخرى.");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "حدث خطأ أثناء الربط. حاول مرة أخرى.");
                   form.reset();
                 }
               }}>
@@ -382,8 +382,8 @@ export function StudentsPage() {
                 <button type="submit" className="hidden">Submit</button>
               </form>
             </div>
-            <button 
-              onClick={() => setAssigningCardTo(null)} 
+            <button
+              onClick={() => setAssigningCardTo(null)}
               className="w-full py-3 border-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100 transition-colors"
             >
               إلغاء

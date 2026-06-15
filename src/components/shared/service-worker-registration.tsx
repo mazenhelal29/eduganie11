@@ -7,6 +7,17 @@ export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
+    // Skip SW registration in development to prevent cache conflicts with HMR
+    if (process.env.NODE_ENV === "development") {
+      // Unregister any existing SW in dev mode
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((reg) => reg.unregister());
+      });
+      // Clear all caches in dev mode
+      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
+      return;
+    }
+
     const register = async () => {
       try {
         const reg = await navigator.serviceWorker.register("/sw.js", {
