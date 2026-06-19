@@ -46,10 +46,10 @@ export function NewTeacherModal({ onClose }: NewTeacherModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border bg-card shadow-2xl animate-in zoom-in-95 duration-200"
+        className="w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden rounded-2xl border bg-card shadow-2xl animate-in zoom-in-95 duration-200"
         role="dialog"
       >
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="flex items-center justify-between border-b p-3 sm:px-6 sm:py-4 shrink-0">
           <h2 className="text-xl font-semibold">{t.teachers.addTitle}</h2>
           <button
             onClick={onClose}
@@ -59,7 +59,7 @@ export function NewTeacherModal({ onClose }: NewTeacherModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-6 overflow-y-auto custom-scrollbar">
           {error && (
             <div className="mb-6 rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-200">
               {error}

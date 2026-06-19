@@ -49,6 +49,7 @@ type EduGenieActions = {
 
 type EduGenieContextValue = EduGenieState &
   EduGenieActions & {
+    tenantId: string | null;
     metrics: {
       totalStudents: number;
       activeStudents: number;
@@ -488,6 +489,7 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
 
     return {
       ...state,
+      tenantId,
       metrics,
       updateSettings: async (payload) => {
         if (!tenantId || !payload.billingModel) {
@@ -801,21 +803,21 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
 
         try {
           // Save to Supabase first
-          const { error } = await supabase.from("attendance").insert({
+          const { error } = await supabase.from("attendance").upsert({
             id: record.id,
             tenant_id: tenantId,
             student_id: record.studentId,
             group_id: record.groupId,
             status: record.status,
             attended_on: record.attendedOn,
-          });
+          }, { onConflict: "tenant_id,student_id,attended_on" });
 
-          if (error) throw error;
+          if (error) throw new Error(error.message || JSON.stringify(error));
 
           // Only update state after successful save
           dispatch({ type: "addAttendanceRecords", payload: [record] });
-        } catch (error) {
-          console.error("Error marking attendance:", error);
+        } catch (error: any) {
+          console.error("Error marking attendance:", error.message || error);
           throw error;
         }
       },
@@ -849,12 +851,12 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
           const { error } = await supabase.from("attendance").upsert(dbRecords, {
             onConflict: "tenant_id,student_id,attended_on",
           });
-          if (error) throw error;
+          if (error) throw new Error(error.message || JSON.stringify(error));
 
           // Only update state after successful save
           dispatch({ type: "addAttendanceRecords", payload: newRecords });
-        } catch (error) {
-          console.error("Error marking group attendance:", error);
+        } catch (error: any) {
+          console.error("Error marking group attendance:", error.message || error);
           throw error;
         }
       },
