@@ -43,7 +43,7 @@ export function StudentsPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   // Handlers
-  const handleEdit = (_studentId: string) => {
+  const handleEdit = () => {
     toast.error("سيتم إضافة ميزة تعديل الطالب في لوحة جانبية قريباً");
   };
 
@@ -53,7 +53,7 @@ export function StudentsPage() {
         await archiveStudent(studentId);
         toast.success("تم أرشفة الطالب بنجاح");
         refetch();
-      } catch (_error) {
+      } catch {
         toast.error("حدث خطأ أثناء الأرشفة");
       }
     }
