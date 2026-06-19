@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: "EduGenie",
   description: "نظام إدارة المراكز التعليمية",
   applicationName: "EduGenie",
-  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "EduGenie",
@@ -21,8 +20,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/logo.jpg", sizes: "192x192", type: "image/jpeg" },
+      { url: "/logo.jpg", sizes: "512x512", type: "image/jpeg" },
     ],
     shortcut: "/logo.jpg",
     apple: [
@@ -54,6 +53,9 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#172554" />
+        
         {/* iOS PWA Meta Tags */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
