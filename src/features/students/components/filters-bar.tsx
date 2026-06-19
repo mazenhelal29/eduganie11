@@ -23,8 +23,7 @@ export function FiltersBar({
   onSearchChange,
   groupId,
   onGroupChange,
-  attendanceFilter,
-  onAttendanceChange,
+  // attendanceFilter and onAttendanceChange kept in interface for future use
   sortBy,
   onSortChange,
   onAddStudent,
@@ -96,7 +95,7 @@ export function FiltersBar({
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content align="end" className="z-50 min-w-[150px] rounded-md border bg-popover p-1 shadow-md">
-                <DropdownMenu.RadioGroup value={sortBy} onValueChange={(val: any) => onSortChange(val)}>
+                <DropdownMenu.RadioGroup value={sortBy} onValueChange={(val: string) => onSortChange(val as "name" | "attendance")}>
                   <DropdownMenu.RadioItem value="name" className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-3 text-sm outline-none hover:bg-accent">
                     الاسم
                   </DropdownMenu.RadioItem>

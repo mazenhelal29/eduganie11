@@ -1,6 +1,24 @@
 <svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="192" height="192" rx="40" fill="#172554"/>
-  <path d="M49 62C49 55.3726 54.3726 50 61 50H131C137.627 50 143 55.3726 143 62V130C143 136.627 137.627 142 131 142H61C54.3726 142 49 136.627 49 130V62Z" fill="#10B981"/>
-  <path d="M69 78H123V90H69V78Z" fill="white"/>
-  <path d="M69 102H113V114H69V102Z" fill="white"/>
+  <!-- Background -->
+  <rect width="192" height="192" rx="40" fill="#0f172a"/>
+  <!-- Gradient overlay -->
+  <rect width="192" height="192" rx="40" fill="url(#grad)"/>
+  <!-- Book shape -->
+  <rect x="44" y="48" width="104" height="96" rx="8" fill="#1e40af"/>
+  <!-- Book spine -->
+  <rect x="44" y="48" width="16" height="96" rx="4" fill="#1d4ed8"/>
+  <!-- Pages lines -->
+  <rect x="72" y="68" width="60" height="6" rx="3" fill="white" opacity="0.9"/>
+  <rect x="72" y="82" width="60" height="6" rx="3" fill="white" opacity="0.7"/>
+  <rect x="72" y="96" width="48" height="6" rx="3" fill="white" opacity="0.5"/>
+  <!-- Green accent star/sparkle -->
+  <circle cx="138" cy="62" r="18" fill="#10b981"/>
+  <text x="138" y="68" text-anchor="middle" font-size="18" fill="white">✦</text>
+  <!-- Gradient def -->
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
 </svg>

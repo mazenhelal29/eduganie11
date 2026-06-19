@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslation } from "@/providers/i18n-provider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useEduGenie } from "@/providers/edugenie-store";
 import { toast } from "@/components/ui/toast";
@@ -12,7 +11,6 @@ import { useStudentsQuery } from "./hooks/use-students-query";
 import { ScanLine, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export function StudentsPage() {
-  const { t } = useTranslation();
   const { archiveStudent, assignCard, cards } = useEduGenie();
 
   // Filters & State
@@ -45,9 +43,7 @@ export function StudentsPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   // Handlers
-  const handleEdit = (studentId: string) => {
-    // We would open an edit drawer here, similar to add drawer.
-    // For MVP, we can show a toast or implement it later.
+  const handleEdit = (_studentId: string) => {
     toast.error("سيتم إضافة ميزة تعديل الطالب في لوحة جانبية قريباً");
   };
 
@@ -57,7 +53,7 @@ export function StudentsPage() {
         await archiveStudent(studentId);
         toast.success("تم أرشفة الطالب بنجاح");
         refetch();
-      } catch (error) {
+      } catch (_error) {
         toast.error("حدث خطأ أثناء الأرشفة");
       }
     }

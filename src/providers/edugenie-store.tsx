@@ -816,8 +816,9 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
 
           // Only update state after successful save
           dispatch({ type: "addAttendanceRecords", payload: [record] });
-        } catch (error: any) {
-          console.error("Error marking attendance:", error.message || error);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error("Error marking attendance:", msg);
           throw error;
         }
       },
@@ -855,8 +856,9 @@ export function EduGenieProvider({ children }: { children: React.ReactNode }) {
 
           // Only update state after successful save
           dispatch({ type: "addAttendanceRecords", payload: newRecords });
-        } catch (error: any) {
-          console.error("Error marking group attendance:", error.message || error);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error("Error marking group attendance:", msg);
           throw error;
         }
       },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 import type { Student } from "@/types/domain";
 import { StudentRow } from "./student-row";
 import { StudentDetailsCard } from "./student-details-card";
@@ -11,11 +11,9 @@ interface StudentsTableProps {
   onEdit: (studentId: string) => void;
   onDelete: (studentId: string) => void;
   onAssignCard: (studentId: string, name: string) => void;
-  fetchNextPage?: () => void;
-  hasNextPage?: boolean;
 }
 
-export function StudentsTable({ students, onEdit, onDelete, onAssignCard, fetchNextPage, hasNextPage }: StudentsTableProps) {
+export function StudentsTable({ students, onEdit, onDelete, onAssignCard }: StudentsTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -70,7 +68,7 @@ export function StudentsTable({ students, onEdit, onDelete, onAssignCard, fetchN
             position: "relative",
           }}
         >
-          {virtualizer.getVirtualItems().map((virtualRow: any) => {
+          {virtualizer.getVirtualItems().map((virtualRow: VirtualItem) => {
             const student = students[virtualRow.index];
             if (!student) return null;
             

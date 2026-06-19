@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppProviders } from "@/providers/app-providers";
 import { ServiceWorkerRegistration } from "@/components/shared/service-worker-registration";
 import { PWAInstallBanner } from "@/components/shared/pwa-install-banner";
+import { SplashScreen } from "@/components/shared/splash-screen";
 
 export const metadata: Metadata = {
   title: "EduGenie",
@@ -15,10 +16,18 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     startupImage: "/logo.jpg",
   },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
-    icon: "/logo.jpg",
+    icon: [
+      { url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/icons/icon-512.svg", sizes: "512x512", type: "image/svg+xml" },
+    ],
     shortcut: "/logo.jpg",
-    apple: "/logo.jpg",
+    apple: [
+      { url: "/logo.jpg", sizes: "180x180", type: "image/jpeg" },
+    ],
     other: [
       { rel: "apple-touch-startup-image", url: "/logo.jpg" },
     ],
@@ -26,10 +35,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#172554",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#172554" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -39,8 +53,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <head>
+        {/* iOS PWA Meta Tags */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="EduGenie" />
+        {/* MS Tile for Windows */}
+        <meta name="msapplication-TileColor" content="#172554" />
+        <meta name="msapplication-TileImage" content="/logo.jpg" />
+        <meta name="msapplication-tap-highlight" content="no" />
+      </head>
       <body>
         <AppProviders>
+          <SplashScreen />
           {children}
           <ServiceWorkerRegistration />
           <PWAInstallBanner />

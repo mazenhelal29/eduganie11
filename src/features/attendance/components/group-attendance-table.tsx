@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   createColumnHelper,
+  type Row,
+  type Cell,
 } from "@tanstack/react-table";
 import { Check, X, Loader2 } from "lucide-react";
 import type { Student } from "@/types/domain";
@@ -32,11 +34,10 @@ function AttendanceRow({
   handleMark, 
   isPending 
 }: { 
-  row: any, 
+  row: Row<StudentAttendanceData>, 
   handleMark: (id: string, status: "present" | "absent") => void, 
   isPending: boolean 
 }) {
-  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const student = row.original.student;
   const status = row.original.record?.status;
@@ -71,7 +72,7 @@ function AttendanceRow({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {row.getVisibleCells().map((cell: any) => (
+      {row.getVisibleCells().map((cell: Cell<StudentAttendanceData, unknown>) => (
         <td key={cell.id} className="p-4 align-middle">
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
@@ -80,14 +81,14 @@ function AttendanceRow({
   );
 }
 
-export function GroupAttendanceTable({ studentsData, groupId }: GroupAttendanceTableProps) {
-  const { t } = useTranslation();
+export function GroupAttendanceTable({ studentsData }: GroupAttendanceTableProps) {
   const { markAttendance, markGroupAttendance } = useEduGenie();
+  const { t } = useTranslation();
   
   const [pendingStudentId, setPendingStudentId] = useState<string | null>(null);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
 
-  const handleMarkAttendance = async (studentId: string, status: "present" | "absent") => {
+  const handleMarkAttendance = useCallback(async (studentId: string, status: "present" | "absent") => {
     setPendingStudentId(studentId);
     try {
       await markAttendance(studentId, status);
@@ -97,7 +98,7 @@ export function GroupAttendanceTable({ studentsData, groupId }: GroupAttendanceT
     } finally {
       setPendingStudentId(null);
     }
-  };
+  }, [markAttendance, setPendingStudentId]);
 
   const handleBulkAction = async (status: "present" | "absent") => {
     setIsBulkLoading(true);
@@ -210,7 +211,7 @@ export function GroupAttendanceTable({ studentsData, groupId }: GroupAttendanceT
         );
       },
     }),
-  ], [t, pendingStudentId, isBulkLoading]);
+  ], [t, pendingStudentId, isBulkLoading, handleMarkAttendance]);
 
   const table = useReactTable({
     data: studentsData,
